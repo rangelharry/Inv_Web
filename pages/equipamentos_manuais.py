@@ -1,0 +1,1 @@
+from . import show_equipamentos_manuais as show
