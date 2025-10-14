@@ -40,7 +40,7 @@ st.set_page_config(
         Sistema completo para gestão de:
         - Equipamentos Elétricos e Manuais
         - Insumos e Materiais
-        - Obras e Projetos
+        - Obra/Departamento
         - Movimentações e Relatórios
         
         **Desenvolvido com Streamlit**
@@ -213,7 +213,7 @@ def show_navigation():
             "⚡ Equipamentos Elétricos": "equipamentos_eletricos", 
             "🔧 Equipamentos Manuais": "equipamentos_manuais",
             "📦 Insumos": "insumos",
-            "🏗️ Obras": "obras",
+            "🏗️ Obras/Departamentos": "obras",
             "📊 Movimentações": "movimentacoes",
             "📈 Relatórios": "relatorios",
             "⚙️ Configurações": "configuracoes"

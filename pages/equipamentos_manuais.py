@@ -69,11 +69,11 @@ def show_equipamentos_table(df):
         'marca': 'Marca'
     })
     
-    # Exibir dados usando HTML para evitar dependência do pyarrow
+    # Exibir dados com ações de movimentação rápida
     if not df_display.empty:
         for idx, row in df_display.iterrows():
             with st.container():
-                col1, col2, col3 = st.columns([3, 2, 2])
+                col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
                 
                 with col1:
                     st.markdown(f"**{row['Código']}** - {row['Descrição']}")
@@ -88,6 +88,65 @@ def show_equipamentos_table(df):
                     st.markdown(f"**{row['Tipo']}**")
                     estado_emoji = {"Novo": "✨", "Usado": "🔧", "Danificado": "⚠️"}.get(row['Estado'], "❓")
                     st.caption(f"{estado_emoji} {row['Estado']} - Qtd: {row['Quantidade']}")
+                
+                with col4:
+                    # Botão de movimentação rápida
+                    if st.button("🔄", key=f"move_{row['Código']}", help="Movimentação Rápida"):
+                        st.session_state[f'show_move_{row["Código"]}'] = True
+                        st.rerun()
+                
+                # Formulário de movimentação rápida
+                if st.session_state.get(f'show_move_{row["Código"]}', False):
+                    with st.form(f"move_form_{row['Código']}"):
+                        st.markdown(f"#### 🔄 Movimentar: {row['Código']}")
+                        
+                        col_origem, col_destino, col_qtd = st.columns(3)
+                        
+                        with col_origem:
+                            st.text_input("Origem", value=row['Localização'], disabled=True)
+                        
+                        with col_destino:
+                            # Importar locais da obra/departamento
+                            from pages.obras import LOCAIS_SUGERIDOS
+                            locais_simplificados = [local.split(' - ')[1] if ' - ' in local else local for local in LOCAIS_SUGERIDOS]
+                            destino = st.selectbox("Novo Destino", locais_simplificados)
+                        
+                        with col_qtd:
+                            quantidade = st.number_input("Quantidade", min_value=1, value=1, help="Quantidade a movimentar")
+                        
+                        responsavel = st.text_input("Responsável", help="Nome do responsável pela movimentação")
+                        
+                        col_submit, col_cancel = st.columns(2)
+                        
+                        with col_submit:
+                            submitted = st.form_submit_button("✅ Confirmar", type="primary")
+                        
+                        with col_cancel:
+                            cancelled = st.form_submit_button("❌ Cancelar")
+                        
+                        if submitted and responsavel:
+                            # Registrar movimentação
+                            from pages.movimentacoes import registrar_movimentacao
+                            success = registrar_movimentacao(
+                                row['Código'], 
+                                row['Localização'], 
+                                destino, 
+                                quantidade, 
+                                responsavel
+                            )
+                            if success:
+                                st.success(f"✅ Movimentação de {quantidade}x {row['Código']} registrada!")
+                                del st.session_state[f'show_move_{row["Código"]}']
+                                st.rerun()
+                            else:
+                                st.error("❌ Erro ao registrar movimentação!")
+                        
+                        elif submitted and not responsavel:
+                            st.error("❌ Informe o responsável!")
+                        
+                        if cancelled:
+                            del st.session_state[f'show_move_{row["Código"]}']
+                            st.rerun()
                 
                 st.markdown("---")
     else:

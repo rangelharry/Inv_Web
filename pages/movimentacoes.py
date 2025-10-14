@@ -44,18 +44,18 @@ def get_movimentacoes_data():
         st.error(f"Erro ao carregar dados: {e}")
         return pd.DataFrame()
 
-def registrar_movimentacao(codigo, origem, destino, quantidade, responsavel, observacoes=""):
-    """Registrar nova movimentação"""
+def registrar_movimentacao(codigo, origem, destino, quantidade, responsavel):
+    """Registrar nova movimentação (direto, sem aprovação)"""
     db = DatabaseConnection()
     
     try:
         from datetime import datetime
         
-        # Inserir nova movimentação
+        # Inserir nova movimentação diretamente aprovada
         query = """
             INSERT INTO movimentacoes (
-                codigo, origem, destino, data, responsavel, status, quantidade, observacoes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                codigo, origem, destino, data, responsavel, status, quantidade
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         
         params = (
@@ -64,9 +64,8 @@ def registrar_movimentacao(codigo, origem, destino, quantidade, responsavel, obs
             destino,
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             responsavel,
-            'pendente',
-            quantidade,
-            observacoes
+            'concluida',  # Status direto concluída
+            quantidade
         )
         
         return db.execute_update(query, params)
@@ -171,15 +170,8 @@ def show():
                         st.caption(f"📅 {row['data']}")
                     
                     with col4:
-                        if row['status'] == 'pendente':
-                            if st.button("✅", key=f"approve_{row['id']}", help="Aprovar"):
-                                if aprovar_movimentacao(row['id']):
-                                    st.success("Movimentação aprovada!")
-                                    st.rerun()
-                            if st.button("❌", key=f"reject_{row['id']}", help="Rejeitar"):
-                                if rejeitar_movimentacao(row['id']):
-                                    st.success("Movimentação rejeitada!")
-                                    st.rerun()
+                        # Remover botões de aprovação - movimentações são registradas diretamente
+                        st.write("")  # Espaço vazio
                     
                     st.markdown("---")
         else:
@@ -194,26 +186,24 @@ def show():
         
         with col1:
             codigo_item = st.text_input("Código do Item *", help="Código do equipamento ou insumo")
-            origem = st.selectbox("Origem *", [
-                "Almoxarifado Central", "Depósito A", "Depósito B", "Oficina Principal",
-                "Obra Centro", "Obra Zona Norte", "Obra Zona Sul", "Manutenção"
-            ])
+            
+            # Importar locais da obra/departamento
+            from pages.obras import LOCAIS_SUGERIDOS
+            locais_simplificados = [local.split(' - ')[1] if ' - ' in local else local for local in LOCAIS_SUGERIDOS]
+            
+            origem = st.selectbox("Origem *", locais_simplificados, help="Local de origem do item")
             quantidade = st.number_input("Quantidade *", min_value=1, value=1)
         
         with col2:
-            destino = st.selectbox("Destino *", [
-                "Almoxarifado Central", "Depósito A", "Depósito B", "Oficina Principal", 
-                "Obra Centro", "Obra Zona Norte", "Obra Zona Sul", "Manutenção", "Em Trânsito"
-            ])
+            destino = st.selectbox("Destino *", locais_simplificados, help="Local de destino do item")
             responsavel = st.text_input("Responsável *", help="Nome do responsável pela movimentação")
-            observacoes = st.text_area("Observações")
         
         submitted = st.form_submit_button("📦 Registrar Movimentação", type="primary")
         
         if submitted:
             if codigo_item and origem and destino and responsavel:
                 # Registrar movimentação
-                success = registrar_movimentacao(codigo_item, origem, destino, quantidade, responsavel, observacoes)
+                success = registrar_movimentacao(codigo_item, origem, destino, quantidade, responsavel)
                 if success:
                     st.success("✅ Movimentação registrada com sucesso!")
                     st.rerun()
@@ -227,10 +217,10 @@ def show():
     st.info("""
     💡 **Funcionalidades implementadas:**
     - ✅ Listagem de movimentações
-    - ✅ Registro de novas movimentações
-    - ✅ Aprovações de transferência
+    - ✅ Registro direto de movimentações (sem aprovação)
+    - ✅ Integração com locais da Obra/Departamento
+    - ✅ Controle de quantidade
     - ✅ Rastreamento em tempo real
-    - ⏳ Relatórios específicos
     """)
 
 if __name__ == "__main__":

@@ -235,7 +235,7 @@ class WebAuth:
         st.markdown("---")
         
         # Container centralizado para login
-        col1, col2, col3 = st.columns([1, 2, 1])
+        _, col2, _ = st.columns([1, 2, 1])
         
         with col2:
             st.markdown("""

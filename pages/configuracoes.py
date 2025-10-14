@@ -65,10 +65,16 @@ def show_change_password_form():
                 if result:
                     # Atualizar senha
                     new_hash = hash_password(new_password)
-                    db.execute_query(
+                    success = db.execute_update(
                         "UPDATE usuarios SET senha = ? WHERE id = ?",
                         (new_hash, user['id'])
                     )
+                    if success:
+                        st.success("✅ Senha alterada com sucesso!")
+                    else:
+                        st.error("❌ Erro ao alterar senha")
+                else:
+                    st.error("⚠️ Senha atual incorreta")
                     st.success("✅ Senha alterada com sucesso!")
                     st.rerun()
                 else:

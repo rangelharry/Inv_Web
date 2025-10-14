@@ -14,7 +14,7 @@ import os
 # Adicionar pasta raiz ao path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from database.connection import get_database
+from database.connection import DatabaseConnection
 from utils.auth import get_auth, check_authentication
 
 # Verificar autenticação quando acessado diretamente
@@ -23,14 +23,14 @@ if not check_authentication():
 
 def get_equipamentos_data():
     """Carregar dados dos equipamentos elétricos"""
-    db = get_database()
+    db = DatabaseConnection()
     
     try:
         query = """
             SELECT 
                 codigo, descricao, categoria, status,
                 localizacao, responsavel, data_entrada, observacoes
-            FROM equipamentos
+            FROM equipamentos_eletricos
             ORDER BY codigo
         """
         
@@ -43,12 +43,10 @@ def get_equipamentos_data():
 
 def get_locations():
     """Obter lista de localizações disponíveis"""
-    return [
-        "Almoxarifado Central", "Depósito A", "Depósito B", "Oficina Principal",
-        "Oficina Secundária", "Obra Centro", "Obra Zona Norte", "Obra Zona Sul",
-        "Obra Zona Leste", "Obra Zona Oeste", "Manutenção", "Em Trânsito",
-        "Emprestado", "Vendido", "Descartado", "Garantia", "Outros", "Não Definido"
-    ]
+    # Importar locais da obra/departamento
+    from pages.obras import LOCAIS_SUGERIDOS
+    locais_simplificados = [local.split(' - ')[1] if ' - ' in local else local for local in LOCAIS_SUGERIDOS]
+    return locais_simplificados
 
 def get_categories():
     """Obter categorias de equipamentos"""
@@ -228,11 +226,11 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
 
 def add_equipment(equipment_data):
     """Adicionar novo equipamento"""
-    db = get_database()
+    db = DatabaseConnection()
     
     try:
         query = """
-            INSERT INTO equipamentos (
+            INSERT INTO equipamentos_eletricos (
                 codigo, descricao, categoria, status,
                 localizacao, responsavel, data_entrada, observacoes
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -257,11 +255,11 @@ def add_equipment(equipment_data):
 
 def update_equipment(equipment_id, equipment_data):
     """Atualizar equipamento existente"""
-    db = get_database()
+    db = DatabaseConnection()
     
     try:
         query = """
-            UPDATE equipamentos SET
+            UPDATE equipamentos_eletricos SET
                 descricao = ?, categoria = ?, status = ?,
                 localizacao = ?, responsavel = ?, observacoes = ?
             WHERE codigo = ?
@@ -285,10 +283,10 @@ def update_equipment(equipment_id, equipment_data):
 
 def delete_equipment(equipment_id):
     """Deletar equipamento"""
-    db = get_database()
+    db = DatabaseConnection()
     
     try:
-        return db.execute_update("DELETE FROM equipamentos WHERE codigo = ?", (equipment_id,))
+        return db.execute_update("DELETE FROM equipamentos_eletricos WHERE codigo = ?", (equipment_id,))
     except Exception as e:
         st.error(f"Erro ao deletar equipamento: {e}")
         return False
@@ -324,19 +322,79 @@ def show_equipment_table(df):
             
             for idx, row in df_display.iterrows():
                 with st.container():
-                    col1, col2, col3 = st.columns([2, 2, 1])
+                    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
                     
                     with col1:
-                        st.markdown(f"**{row['Código']}** - {row['Descrição']}")
+                        st.markdown(f"**{row['Código']}** - {row['Descrição'][:30]}...")
                         st.caption(f"📍 {row['Localização']}")
                     
                     with col2:
-                        status_color = {"Ativo": "🟢", "Inativo": "🔴", "Manutenção": "🟡"}.get(row['Status'], "⚪")
+                        status_color = {"Disponível": "🟢", "Em Uso": "�", "Manutenção": "�", "Inativo": "⚫"}.get(row['Status'], "⚪")
                         st.markdown(f"{status_color} **{row['Status']}**")
-                        st.caption(f"👤 {row['Responsável']}")
+                        st.caption(f"� {row['Categoria']}")
                     
                     with col3:
-                        st.markdown(f"**{row['Categoria']}**")
+                        st.caption(f"�👤 {row['Responsável']}")
+                        st.caption(f"📅 {row.get('data_entrada', 'N/A')}")
+                    
+                    with col4:
+                        # Botão de movimentação rápida
+                        if st.button("🔄", key=f"move_btn_{row['Código']}", help="Movimentação Rápida"):
+                            st.session_state[f'show_move_{row["Código"]}'] = True
+                            st.rerun()
+                    
+                    # Formulário de movimentação rápida
+                    if st.session_state.get(f'show_move_{row["Código"]}', False):
+                        with st.form(f"move_form_{row['Código']}"):
+                            st.markdown(f"#### 🔄 Movimentar: {row['Código']}")
+                            
+                            col_origem, col_destino, col_qtd = st.columns(3)
+                            
+                            with col_origem:
+                                st.text_input("Origem", value=row['Localização'], disabled=True)
+                            
+                            with col_destino:
+                                # Importar locais da obra/departamento
+                                from pages.obras import LOCAIS_SUGERIDOS
+                                locais_simplificados = [local.split(' - ')[1] if ' - ' in local else local for local in LOCAIS_SUGERIDOS]
+                                destino = st.selectbox("Novo Destino", locais_simplificados)
+                            
+                            with col_qtd:
+                                quantidade = st.number_input("Quantidade", min_value=1, value=1, help="Quantidade a movimentar")
+                            
+                            responsavel = st.text_input("Responsável", help="Nome do responsável pela movimentação")
+                            
+                            col_submit, col_cancel = st.columns(2)
+                            
+                            with col_submit:
+                                submitted = st.form_submit_button("✅ Confirmar", type="primary")
+                            
+                            with col_cancel:
+                                cancelled = st.form_submit_button("❌ Cancelar")
+                            
+                            if submitted and responsavel:
+                                # Registrar movimentação
+                                from pages.movimentacoes import registrar_movimentacao
+                                success = registrar_movimentacao(
+                                    row['Código'], 
+                                    row['Localização'], 
+                                    destino, 
+                                    quantidade, 
+                                    responsavel
+                                )
+                                if success:
+                                    st.success(f"✅ Movimentação de {quantidade}x {row['Código']} registrada!")
+                                    del st.session_state[f'show_move_{row["Código"]}']
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Erro ao registrar movimentação!")
+                            
+                            elif submitted and not responsavel:
+                                st.error("❌ Informe o responsável!")
+                            
+                            if cancelled:
+                                del st.session_state[f'show_move_{row["Código"]}']
+                                st.rerun()
                     
                     st.markdown("---")
         else:
@@ -382,7 +440,9 @@ def show():
     
     # Verificar autenticação
     auth = get_auth()
-    auth.require_auth()
+    if not auth.is_authenticated():
+        auth.show_login_page()
+        return
     
     # Header da página
     st.markdown("## ⚡ Equipamentos Elétricos")
@@ -438,7 +498,7 @@ def show():
             em_uso = len(df[df['status'] == 'Em Uso'])
             st.metric("Em Uso", em_uso)
         
-        with col3:
+        with col4:
             manutencao = len(df[df['status'] == 'Manutenção'])
             st.metric("Em Manutenção", manutencao, delta_color="inverse")
         
@@ -451,7 +511,21 @@ def show():
     else:
         st.warning("⚠️ Nenhum equipamento encontrado no banco de dados")
         st.info("Use o botão 'Novo Equipamento' para adicionar o primeiro equipamento")
+    
+    # Informações sobre funcionalidades
+    st.markdown("---")
+    st.info("""
+    💡 **Funcionalidades implementadas:**
+    - ✅ Listagem completa de equipamentos elétricos
+    - ✅ Cadastro de novos equipamentos
+    - ✅ Edição e exclusão de equipamentos
+    - ✅ Filtros avançados (status, categoria, localização)
+    - ✅ Movimentação rápida com quantidade
+    - ✅ Integração com locais da Obra/Departamento
+    - ✅ Sistema de busca por código/descrição
+    - ✅ Métricas e estatísticas em tempo real
+    """)
 
 if __name__ == "__main__":
-    from pages import show_equipamentos_eletricos
-    show_equipamentos_eletricos()
+    from pages import equipamentos_eletricos
+    equipamentos_eletricos.show()

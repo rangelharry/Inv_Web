@@ -78,11 +78,11 @@ def show_insumos_table(df):
     # Formatar valor total
     df_display['Valor Total'] = df_display['Valor Total'].apply(lambda x: f"R$ {x:.2f}")
     
-    # Exibir dados usando HTML para evitar dependência do pyarrow
+    # Exibir dados com ações de movimentação/entrada/saída rápida
     if not df_display.empty:
         for idx, row in df_display.iterrows():
             with st.container():
-                col1, col2, col3 = st.columns([3, 2, 2])
+                col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
                 
                 with col1:
                     st.markdown(f"**{row['Código']}** - {row['Descrição']}")
@@ -95,9 +95,148 @@ def show_insumos_table(df):
                 with col3:
                     st.markdown(f"**{row['Valor Total']}**")
                 
+                with col4:
+                    # Botões de entrada/saída rápida
+                    col_in, col_out = st.columns(2)
+                    
+                    with col_in:
+                        if st.button("➕", key=f"in_{row['Código']}", help="Entrada"):
+                            st.session_state[f'show_entrada_{row["Código"]}'] = True
+                            st.rerun()
+                    
+                    with col_out:
+                        if st.button("➖", key=f"out_{row['Código']}", help="Saída"):
+                            st.session_state[f'show_saida_{row["Código"]}'] = True
+                            st.rerun()
+                
+                # Formulário de entrada
+                if st.session_state.get(f'show_entrada_{row["Código"]}', False):
+                    with st.form(f"entrada_form_{row['Código']}"):
+                        st.markdown(f"#### ➕ Entrada: {row['Código']}")
+                        
+                        col_qtd, col_resp = st.columns(2)
+                        
+                        with col_qtd:
+                            quantidade = st.number_input("Quantidade", min_value=0.1, value=1.0, step=0.1)
+                        
+                        with col_resp:
+                            responsavel = st.text_input("Responsável")
+                        
+                        observacoes = st.text_input("Observações", placeholder="Ex: Compra, transferência...")
+                        
+                        col_submit, col_cancel = st.columns(2)
+                        
+                        with col_submit:
+                            submitted = st.form_submit_button("✅ Confirmar Entrada", type="primary")
+                        
+                        with col_cancel:
+                            cancelled = st.form_submit_button("❌ Cancelar")
+                        
+                        if submitted and responsavel:
+                            success = movimentar_estoque_insumo(row['Código'], quantidade, 'entrada', responsavel, observacoes)
+                            if success:
+                                st.success(f"✅ Entrada de {quantidade} {row['Unidade']} registrada!")
+                                del st.session_state[f'show_entrada_{row["Código"]}']
+                                st.rerun()
+                            else:
+                                st.error("❌ Erro ao registrar entrada!")
+                        
+                        elif submitted and not responsavel:
+                            st.error("❌ Informe o responsável!")
+                        
+                        if cancelled:
+                            del st.session_state[f'show_entrada_{row["Código"]}']
+                            st.rerun()
+                
+                # Formulário de saída
+                if st.session_state.get(f'show_saida_{row["Código"]}', False):
+                    with st.form(f"saida_form_{row['Código']}"):
+                        st.markdown(f"#### ➖ Saída: {row['Código']}")
+                        
+                        col_qtd, col_resp = st.columns(2)
+                        
+                        with col_qtd:
+                            quantidade = st.number_input("Quantidade", min_value=0.1, value=1.0, step=0.1)
+                        
+                        with col_resp:
+                            responsavel = st.text_input("Responsável")
+                        
+                        observacoes = st.text_input("Observações", placeholder="Ex: Uso em obra, transferência...")
+                        
+                        col_submit, col_cancel = st.columns(2)
+                        
+                        with col_submit:
+                            submitted = st.form_submit_button("✅ Confirmar Saída", type="primary")
+                        
+                        with col_cancel:
+                            cancelled = st.form_submit_button("❌ Cancelar")
+                        
+                        if submitted and responsavel:
+                            success = movimentar_estoque_insumo(row['Código'], quantidade, 'saida', responsavel, observacoes)
+                            if success:
+                                st.success(f"✅ Saída de {quantidade} {row['Unidade']} registrada!")
+                                del st.session_state[f'show_saida_{row["Código"]}']
+                                st.rerun()
+                            else:
+                                st.error("❌ Erro ao registrar saída!")
+                        
+                        elif submitted and not responsavel:
+                            st.error("❌ Informe o responsável!")
+                        
+                        if cancelled:
+                            del st.session_state[f'show_saida_{row["Código"]}']
+                            st.rerun()
+                
                 st.markdown("---")
     else:
         st.info("Nenhum insumo encontrado.")
+
+def movimentar_estoque_insumo(codigo, quantidade, tipo, responsavel, observacoes=""):
+    """Movimentar estoque de insumo (entrada/saída)"""
+    db = DatabaseConnection()
+    
+    try:
+        from datetime import datetime
+        
+        # Buscar dados atuais do insumo
+        insumo = db.execute_query("SELECT * FROM insumos WHERE codigo = ?", (codigo,))
+        
+        if not insumo:
+            st.error("Insumo não encontrado!")
+            return False
+        
+        insumo_atual = insumo[0]
+        quantidade_atual = float(insumo_atual['quantidade'])
+        
+        # Calcular nova quantidade
+        if tipo == 'entrada':
+            nova_quantidade = quantidade_atual + quantidade
+        else:  # saída
+            if quantidade > quantidade_atual:
+                st.error(f"Quantidade insuficiente! Disponível: {quantidade_atual}")
+                return False
+            nova_quantidade = quantidade_atual - quantidade
+        
+        # Atualizar estoque
+        update_query = "UPDATE insumos SET quantidade = ? WHERE codigo = ?"
+        success = db.execute_update(update_query, (nova_quantidade, codigo))
+        
+        if success:
+            # Registrar movimentação
+            from pages.movimentacoes import registrar_movimentacao
+            registrar_movimentacao(
+                codigo,
+                insumo_atual['localizacao'],
+                insumo_atual['localizacao'],  # Mesmo local, apenas alteração de quantidade
+                quantidade,
+                responsavel
+            )
+        
+        return success
+        
+    except Exception as e:
+        st.error(f"Erro ao movimentar estoque: {e}")
+        return False
 
 def cadastrar_insumo(codigo, descricao, categoria, unidade, quantidade, quantidade_minima, preco_unitario, localizacao, observacoes=""):
     """Cadastrar novo insumo"""
@@ -257,6 +396,9 @@ def show():
     if not df_filtered.empty:
         st.markdown(f"### 📋 Lista de Insumos ({len(df_filtered)} encontrados)")
         show_insumos_table(df_filtered)
+    else:
+        st.warning("⚠️ Nenhum insumo encontrado com os filtros aplicados")
+        st.info("Tente ajustar os filtros ou termo de busca")
         
     # Formulário para novo insumo
     st.markdown("---")
@@ -278,9 +420,10 @@ def show():
             quantidade = st.number_input("Quantidade Inicial *", min_value=0.0, value=0.0, step=0.1)
             quantidade_minima = st.number_input("Quantidade Mínima *", min_value=0.0, value=1.0, step=0.1)
             preco_unitario = st.number_input("Preço Unitário (R$) *", min_value=0.0, value=0.0, step=0.01)
-            localizacao = st.selectbox("Localização *", [
-                "Almoxarifado Central", "Depósito A", "Depósito B", "Oficina Principal"
-            ])
+            # Importar locais da obra/departamento
+            from pages.obras import LOCAIS_SUGERIDOS
+            locais_simplificados = [local.split(' - ')[1] if ' - ' in local else local for local in LOCAIS_SUGERIDOS]
+            localizacao = st.selectbox("Localização *", locais_simplificados)
         
         observacoes = st.text_area("Observações")
         
@@ -308,10 +451,6 @@ def show():
     - ⏳ Movimentações de entrada/saída
     - ⏳ Relatórios de consumo
     """)
-        
-    else:
-        st.warning("⚠️ Nenhum insumo encontrado com os filtros aplicados")
-        st.info("Tente ajustar os filtros ou termo de busca")
 
 if __name__ == "__main__":
     from pages import insumos
