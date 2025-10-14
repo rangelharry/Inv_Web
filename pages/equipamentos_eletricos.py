@@ -435,11 +435,11 @@ def show():
             st.metric("Disponíveis", disponivel)
         
         with col3:
-            em_uso = len(df[df['status'] == 'Em uso'])
+            em_uso = len(df[df['status'] == 'Em Uso'])
             st.metric("Em Uso", em_uso)
         
-        with col4:
-            manutencao = len(df[df['status'] == 'Em manutenção'])
+        with col3:
+            manutencao = len(df[df['status'] == 'Manutenção'])
             st.metric("Em Manutenção", manutencao, delta_color="inverse")
         
         st.markdown("---")

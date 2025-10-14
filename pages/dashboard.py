@@ -50,24 +50,24 @@ def get_dashboard_metrics():
         equipamentos_disponiveis += equipamentos_manuais_disponiveis_result[0]['count'] if equipamentos_manuais_disponiveis_result else 0
         
         equipamentos_em_uso_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos WHERE status = 'Em uso'"
+            "SELECT COUNT(*) as count FROM equipamentos WHERE status = 'Em Uso'"
         )
         equipamentos_em_uso = equipamentos_em_uso_result[0]['count'] if equipamentos_em_uso_result else 0
         
         # Adicionar equipamentos manuais em uso
         equipamentos_manuais_em_uso_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos_manuais WHERE status = 'Em uso'"
+            "SELECT COUNT(*) as count FROM equipamentos WHERE categoria NOT LIKE '%Elétrica%' AND status = 'Em Uso'"
         )
         equipamentos_em_uso += equipamentos_manuais_em_uso_result[0]['count'] if equipamentos_manuais_em_uso_result else 0
         
         equipamentos_manutencao_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos WHERE status = 'Em manutenção'"
+            "SELECT COUNT(*) as count FROM equipamentos WHERE status = 'Manutenção'"
         )
         equipamentos_manutencao = equipamentos_manutencao_result[0]['count'] if equipamentos_manutencao_result else 0
         
         # Adicionar equipamentos manuais em manutenção
         equipamentos_manuais_manutencao_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos_manuais WHERE status = 'Em manutenção'"
+            "SELECT COUNT(*) as count FROM equipamentos WHERE categoria NOT LIKE '%Elétrica%' AND status = 'Manutenção'"
         )
         equipamentos_manutencao += equipamentos_manuais_manutencao_result[0]['count'] if equipamentos_manuais_manutencao_result else 0
         
@@ -410,13 +410,6 @@ def show():
     if st.button("🔄 Atualizar Dashboard", type="secondary"):
         st.rerun()
 
-# Verificar autenticação quando acessado diretamente
-auth = get_auth()
-if not auth.is_authenticated():
-    auth.show_login_page()
-else:
-    show()
-
 if __name__ == "__main__":
-    from pages import show_dashboard
-    show_dashboard()
+    from pages import dashboard
+    dashboard.show()

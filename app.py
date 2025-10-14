@@ -145,6 +145,16 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     
+    /* Ocultar sidebar quando não logado */
+    .css-1d391kg {
+        display: none !important;
+    }
+    
+    /* Mostrar sidebar apenas quando logado */
+    .user-logged-in .css-1d391kg {
+        display: block !important;
+    }
+    
     /* Animações */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
@@ -182,7 +192,13 @@ def show_user_info():
             st.rerun()
 
 def show_navigation():
-    """Exibir menu de navegação lateral"""
+    """Exibir menu de navegação lateral (apenas para usuários autenticados)"""
+    
+    # Verificar se usuário está autenticado antes de mostrar navegação
+    auth = get_auth()
+    if not auth.is_authenticated():
+        return None
+    
     with st.sidebar:
         st.title("📋 Menu Principal")
         
@@ -252,23 +268,23 @@ def load_page(page_name: str):
             from pages import equipamentos_eletricos
             equipamentos_eletricos.show()
         elif page_name == "equipamentos_manuais":
-            from pages import show_equipamentos_manuais
-            show_equipamentos_manuais()
+            from pages import equipamentos_manuais
+            equipamentos_manuais.show()
         elif page_name == "insumos":
-            from pages import show_insumos
-            show_insumos()
+            from pages import insumos
+            insumos.show()
         elif page_name == "obras":
-            from pages import show_obras
-            show_obras()
+            from pages import obras
+            obras.show()
         elif page_name == "movimentacoes":
-            from pages import show_movimentacoes
-            show_movimentacoes()
+            from pages import movimentacoes
+            movimentacoes.show()
         elif page_name == "relatorios":
-            from pages import show_relatorios
-            show_relatorios()
+            from pages import relatorios
+            relatorios.show()
         elif page_name == "configuracoes":
-            from pages import show_configuracoes
-            show_configuracoes()
+            from pages import configuracoes
+            configuracoes.show()
         else:
             st.error(f"❌ Página '{page_name}' não encontrada!")
             
@@ -337,8 +353,11 @@ def main():
     selected_page = show_navigation()
     
     # Container principal
-    with st.container():
-        load_page(selected_page)
+    if selected_page:
+        with st.container():
+            load_page(selected_page)
+    else:
+        st.error("❌ Erro na navegação do sistema")
     
     # Footer
     show_footer()
