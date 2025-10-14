@@ -189,7 +189,7 @@ def show_status_chart(metrics):
             font_size=12
         )
         
-        st.plotly_chart(fig, use_container_width=True, key="status_chart")
+        st.plotly_chart(fig, use_container_width=True)
     
     with col2:
         st.markdown("#### 📋 Resumo")

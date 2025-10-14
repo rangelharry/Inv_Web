@@ -208,3 +208,19 @@ def show_configuracoes():
         "Configurações do sistema e preferências do usuário",
         0.2
     )
+
+def show_dashboard():
+    show_development_page(
+        "Dashboard",
+        "📊",
+        "Painel principal com métricas e indicadores do inventário",
+        0.8
+    )
+
+def show_equipamentos_eletricos():
+    show_development_page(
+        "Equipamentos Elétricos",
+        "⚡",
+        "Gestão completa de equipamentos elétricos do inventário",
+        0.9
+    )

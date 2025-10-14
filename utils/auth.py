@@ -57,7 +57,7 @@ class WebAuth:
         query = """
             SELECT id, usuario, nome, ativo, ultimo_acesso
             FROM usuarios
-            WHERE usuario = ? AND senha = ?
+            WHERE usuario = ? AND senha_hash = ?
         """
         
         result = self.db.execute_query(query, (username, password_hash))
@@ -185,11 +185,19 @@ class WebAuth:
         try:
             acao = "Login realizado" if success else f"Tentativa de login falhada: {username}"
             
+            # Obter nome do usuário se disponível
+            usuario_nome = ""
+            if user_id:
+                user_result = self.db.execute_query("SELECT usuario FROM usuarios WHERE id = ?", (user_id,))
+                usuario_nome = user_result[0]['usuario'] if user_result else str(user_id)
+            else:
+                usuario_nome = username
+            
             self.db.execute_update("""
-                INSERT INTO auditoria (usuario_id, acao, detalhes, timestamp)
+                INSERT INTO auditoria (usuario, acao, detalhes, timestamp)
                 VALUES (?, ?, ?, ?)
             """, (
-                user_id,
+                usuario_nome,
                 acao,
                 f"Login via web - IP: {st.session_state.get('client_ip', 'Unknown')}",
                 datetime.now().isoformat()
@@ -205,11 +213,15 @@ class WebAuth:
             user_id: ID do usuário
         """
         try:
+            # Obter nome do usuário
+            user_result = self.db.execute_query("SELECT usuario FROM usuarios WHERE id = ?", (user_id,))
+            usuario_nome = user_result[0]['usuario'] if user_result else str(user_id)
+            
             self.db.execute_update("""
-                INSERT INTO auditoria (usuario_id, acao, detalhes, timestamp)
+                INSERT INTO auditoria (usuario, acao, detalhes, timestamp)
                 VALUES (?, ?, ?, ?)
             """, (
-                user_id,
+                usuario_nome,
                 "Logout realizado",
                 "Logout via web",
                 datetime.now().isoformat()
@@ -239,7 +251,7 @@ class WebAuth:
             with st.form("login_form", clear_on_submit=False):
                 username = st.text_input(
                     "👤 Usuário",
-                    placeholder="Digite seu nome de usuário",
+                    placeholder="Digite seu nome de usuário", 
                     help="Use: admin ou cinthia"
                 )
                 
@@ -284,7 +296,7 @@ class WebAuth:
                 # Modo demonstração
                 if demo_button:
                     with st.spinner("🎯 Ativando modo demonstração..."):
-                        if self.login_user("admin", "123456"):
+                        if self.login_user("admin", "admin123"):
                             st.success("✅ Modo demonstração ativado!")
                             st.info("👋 Bem-vindo ao modo demo!")
                             st.rerun()
@@ -299,8 +311,8 @@ class WebAuth:
         with col_info1:
             st.info("""
             **👥 Usuários de Teste:**
-            - admin / 123456
-            - cinthia / C1nt1@2024
+            - admin / admin123
+            - cinthia / cinthia123
             """)
         
         with col_info2:
@@ -329,3 +341,21 @@ def get_auth() -> WebAuth:
         Instância de WebAuth
     """
     return WebAuth()
+
+def check_authentication() -> bool:
+    """
+    Verificar se o usuário está autenticado
+    Função auxiliar para uso direto em páginas
+    
+    Returns:
+        True se autenticado, False caso contrário
+    """
+    auth = get_auth()
+    
+    # Verificar se está autenticado e sessão não expirou
+    if not auth.is_authenticated() or not auth.check_session_timeout():
+        # Se não autenticado, mostrar página de login
+        auth.show_login_page()
+        return False
+    
+    return True

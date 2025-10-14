@@ -15,7 +15,11 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from database.connection import get_database
-from utils.auth import get_auth
+from utils.auth import get_auth, check_authentication
+
+# Verificar autenticação quando acessado diretamente
+if not check_authentication():
+    st.stop()
 
 def get_equipamentos_data():
     """Carregar dados dos equipamentos elétricos"""
@@ -24,8 +28,7 @@ def get_equipamentos_data():
     try:
         query = """
             SELECT 
-                id, codigo, descricao, marca, modelo, categoria,
-                tensao, potencia, corrente_eletrica, status,
+                codigo, descricao, categoria, status,
                 localizacao, responsavel, data_entrada, observacoes
             FROM equipamentos
             ORDER BY codigo
@@ -94,9 +97,7 @@ def apply_filters(df, search_term, status_filter, category_filter, location_filt
     if search_term:
         mask = (
             df['codigo'].str.contains(search_term, case=False, na=False) |
-            df['descricao'].str.contains(search_term, case=False, na=False) |
-            df['marca'].str.contains(search_term, case=False, na=False) |
-            df['modelo'].str.contains(search_term, case=False, na=False)
+            df['descricao'].str.contains(search_term, case=False, na=False)
         )
         df = df[mask]
     
@@ -128,7 +129,8 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
             codigo = st.text_input(
                 "Código *",
                 value=equipment_data.get('codigo', '') if equipment_data else '',
-                help="Código único do equipamento"
+                help="Código único do equipamento",
+                disabled=edit_mode  # Não permitir editar código
             )
             
             descricao = st.text_area(
@@ -138,16 +140,6 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
                 help="Descrição detalhada do equipamento"
             )
             
-            marca = st.text_input(
-                "Marca",
-                value=equipment_data.get('marca', '') if equipment_data else ''
-            )
-            
-            modelo = st.text_input(
-                "Modelo",
-                value=equipment_data.get('modelo', '') if equipment_data else ''
-            )
-            
             categoria = st.selectbox(
                 "Categoria *",
                 get_categories(),
@@ -155,24 +147,6 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
             )
         
         with col2:
-            tensao = st.text_input(
-                "Tensão (V)",
-                value=equipment_data.get('tensao', '') if equipment_data else '',
-                help="Ex: 110V, 220V, 380V"
-            )
-            
-            potencia = st.text_input(
-                "Potência (W)",
-                value=equipment_data.get('potencia', '') if equipment_data else '',
-                help="Potência em Watts"
-            )
-            
-            corrente_eletrica = st.text_input(
-                "Corrente (A)",
-                value=equipment_data.get('corrente_eletrica', '') if equipment_data else '',
-                help="Corrente elétrica em Ampères"
-            )
-            
             status = st.selectbox(
                 "Status *",
                 ["Disponível", "Em uso", "Em manutenção", "Inativo"],
@@ -227,12 +201,7 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
             equipment_data_to_save = {
                 'codigo': codigo,
                 'descricao': descricao,
-                'marca': marca,
-                'modelo': modelo,
                 'categoria': categoria,
-                'tensao': tensao,
-                'potencia': potencia,
-                'corrente_eletrica': corrente_eletrica,
                 'status': status,
                 'localizacao': localizacao,
                 'responsavel': responsavel,
@@ -241,7 +210,7 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
             
             # Salvar no banco
             if edit_mode and equipment_data:
-                success = update_equipment(equipment_data['id'], equipment_data_to_save)
+                success = update_equipment(equipment_data['codigo'], equipment_data_to_save)
                 if success:
                     st.success("✅ Equipamento atualizado com sucesso!")
                     st.session_state.edit_equipment = None
@@ -264,25 +233,19 @@ def add_equipment(equipment_data):
     try:
         query = """
             INSERT INTO equipamentos (
-                codigo, descricao, marca, modelo, categoria,
-                tensao, potencia, corrente_eletrica, status,
+                codigo, descricao, categoria, status,
                 localizacao, responsavel, data_entrada, observacoes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         params = (
             equipment_data['codigo'],
             equipment_data['descricao'],
-            equipment_data['marca'],
-            equipment_data['modelo'],
             equipment_data['categoria'],
-            equipment_data['tensao'],
-            equipment_data['potencia'],
-            equipment_data['corrente_eletrica'],
             equipment_data['status'],
             equipment_data['localizacao'],
             equipment_data['responsavel'],
-            datetime.now().isoformat(),
+            datetime.now().strftime('%d/%m/%Y'),
             equipment_data['observacoes']
         )
         
@@ -299,21 +262,14 @@ def update_equipment(equipment_id, equipment_data):
     try:
         query = """
             UPDATE equipamentos SET
-                codigo = ?, descricao = ?, marca = ?, modelo = ?, categoria = ?,
-                tensao = ?, potencia = ?, corrente_eletrica = ?, status = ?,
+                descricao = ?, categoria = ?, status = ?,
                 localizacao = ?, responsavel = ?, observacoes = ?
-            WHERE id = ?
+            WHERE codigo = ?
         """
         
         params = (
-            equipment_data['codigo'],
             equipment_data['descricao'],
-            equipment_data['marca'],
-            equipment_data['modelo'],
             equipment_data['categoria'],
-            equipment_data['tensao'],
-            equipment_data['potencia'],
-            equipment_data['corrente_eletrica'],
             equipment_data['status'],
             equipment_data['localizacao'],
             equipment_data['responsavel'],
@@ -332,7 +288,7 @@ def delete_equipment(equipment_id):
     db = get_database()
     
     try:
-        return db.execute_update("DELETE FROM equipamentos WHERE id = ?", (equipment_id,))
+        return db.execute_update("DELETE FROM equipamentos WHERE codigo = ?", (equipment_id,))
     except Exception as e:
         st.error(f"Erro ao deletar equipamento: {e}")
         return False
@@ -348,34 +304,43 @@ def show_equipment_table(df):
     
     # Formatar dados para melhor visualização
     df_display['Código'] = df['codigo']
-    df_display['Descrição'] = df['descricao'].str[:50] + '...' if len(df['descricao'].iloc[0]) > 50 else df['descricao']
-    df_display['Marca/Modelo'] = df['marca'] + ' / ' + df['modelo']
+    df_display['Descrição'] = df['descricao'].str[:50] + '...' if len(df) > 0 and len(df['descricao'].iloc[0]) > 50 else df['descricao']
     df_display['Categoria'] = df['categoria']
     df_display['Status'] = df['status']
     df_display['Localização'] = df['localizacao']
     df_display['Responsável'] = df['responsavel']
+    df_display['Responsável'] = df['responsavel']
     
     # Colunas a exibir
-    columns_to_show = ['Código', 'Descrição', 'Marca/Modelo', 'Categoria', 'Status', 'Localização', 'Responsável']
+    columns_to_show = ['Código', 'Descrição', 'Categoria', 'Status', 'Localização', 'Responsável']
     
     # Criar colunas para tabela e ações
     col_table, col_actions = st.columns([4, 1])
     
     with col_table:
-        # Usar data_editor para permitir seleção
-        edited_df = st.data_editor(
-            df_display[columns_to_show],
-            hide_index=True,
-            use_container_width=True,
-            disabled=True,
-            column_config={
-                "Status": st.column_config.SelectboxColumn(
-                    "Status",
-                    options=["Disponível", "Em uso", "Em manutenção", "Inativo"],
-                    disabled=True
-                )
-            }
-        )
+        # Exibir tabela usando HTML para evitar dependência do pyarrow
+        if not df_display.empty:
+            st.markdown("**Equipamentos Cadastrados:**")
+            
+            for idx, row in df_display.iterrows():
+                with st.container():
+                    col1, col2, col3 = st.columns([2, 2, 1])
+                    
+                    with col1:
+                        st.markdown(f"**{row['Código']}** - {row['Descrição']}")
+                        st.caption(f"📍 {row['Localização']}")
+                    
+                    with col2:
+                        status_color = {"Ativo": "🟢", "Inativo": "🔴", "Manutenção": "🟡"}.get(row['Status'], "⚪")
+                        st.markdown(f"{status_color} **{row['Status']}**")
+                        st.caption(f"👤 {row['Responsável']}")
+                    
+                    with col3:
+                        st.markdown(f"**{row['Categoria']}**")
+                    
+                    st.markdown("---")
+        else:
+            st.info("Nenhum equipamento encontrado.")
     
     with col_actions:
         st.markdown("#### Ações")
@@ -401,11 +366,11 @@ def show_equipment_table(df):
                 st.rerun()
             
             if st.button("🗑️ Excluir", use_container_width=True, type="secondary"):
-                if st.session_state.get('confirm_delete') != equipment_data['id']:
-                    st.session_state.confirm_delete = equipment_data['id']
+                if st.session_state.get('confirm_delete') != equipment_data['codigo']:
+                    st.session_state.confirm_delete = equipment_data['codigo']
                     st.warning("⚠️ Clique novamente para confirmar exclusão")
                 else:
-                    if delete_equipment(equipment_data['id']):
+                    if delete_equipment(equipment_data['codigo']):
                         st.success("✅ Equipamento excluído com sucesso!")
                         del st.session_state.confirm_delete
                         st.rerun()
@@ -488,4 +453,5 @@ def show():
         st.info("Use o botão 'Novo Equipamento' para adicionar o primeiro equipamento")
 
 if __name__ == "__main__":
-    show()
+    from pages import show_equipamentos_eletricos
+    show_equipamentos_eletricos()

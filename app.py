@@ -17,12 +17,20 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 from database.connection import init_database, get_database
 from utils.auth import get_auth
 
-# Configuração da página
+# Configuração dinâmica da página
+# Verificar se usuário está logado para configurar sidebar
+try:
+    from utils.auth import get_auth
+    auth = get_auth()
+    sidebar_state = "expanded" if auth.is_authenticated() else "collapsed"
+except:
+    sidebar_state = "collapsed"
+
 st.set_page_config(
     page_title="Sistema de Inventário Web",
     page_icon="🏗️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state=sidebar_state,
     menu_items={
         'Get Help': None,
         'Report a bug': None,
@@ -55,6 +63,24 @@ st.markdown("""
     /* Sidebar customizada */
     .css-1d391kg {
         background-color: #f8f9fa;
+    }
+    
+    /* Melhorar espaçamento do sidebar */
+    .css-1v3fvcr {
+        padding-top: 1rem;
+    }
+    
+    /* Botão de sair no sidebar */
+    .stSidebar .stButton > button {
+        width: 100%;
+        margin-top: 0.5rem;
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    /* Informações do usuário no sidebar */
+    .stSidebar .stMarkdown {
+        font-size: 0.9rem;
     }
     
     /* Cards de métricas */
@@ -142,21 +168,18 @@ def show_user_info():
     user = auth.get_current_user()
     
     if user:
-        col1, col2, col3 = st.columns([2, 2, 1])
+        # Layout simplificado para sidebar
+        st.markdown(f"**👤 Usuário:** {user['nome']}")
         
-        with col1:
-            st.markdown(f"**👤 Usuário:** {user['nome']}")
+        login_time = st.session_state.get('login_time')
+        if login_time:
+            time_str = login_time.strftime("%H:%M")
+            st.markdown(f"**🕐 Login:** {time_str}")
         
-        with col2:
-            login_time = st.session_state.get('login_time')
-            if login_time:
-                time_str = login_time.strftime("%H:%M")
-                st.markdown(f"**🕐 Login:** {time_str}")
-        
-        with col3:
-            if st.button("🚪 Sair", type="secondary"):
-                auth.logout_user()
-                st.rerun()
+        # Botão de sair em linha separada
+        if st.button("🚪 Sair", use_container_width=True, type="secondary"):
+            auth.logout_user()
+            st.rerun()
 
 def show_navigation():
     """Exibir menu de navegação lateral"""
@@ -229,28 +252,29 @@ def load_page(page_name: str):
             from pages import equipamentos_eletricos
             equipamentos_eletricos.show()
         elif page_name == "equipamentos_manuais":
-            from pages import equipamentos_manuais
-            equipamentos_manuais.show()
+            from pages import show_equipamentos_manuais
+            show_equipamentos_manuais()
         elif page_name == "insumos":
-            from pages import insumos
-            insumos.show()
+            from pages import show_insumos
+            show_insumos()
         elif page_name == "obras":
-            from pages import obras
-            obras.show()
+            from pages import show_obras
+            show_obras()
         elif page_name == "movimentacoes":
-            from pages import movimentacoes
-            movimentacoes.show()
+            from pages import show_movimentacoes
+            show_movimentacoes()
         elif page_name == "relatorios":
-            from pages import relatorios
-            relatorios.show()
+            from pages import show_relatorios
+            show_relatorios()
         elif page_name == "configuracoes":
-            from pages import configuracoes
-            configuracoes.show()
+            from pages import show_configuracoes
+            show_configuracoes()
         else:
             st.error(f"❌ Página '{page_name}' não encontrada!")
             
     except ImportError as e:
-        st.warning(f"⚠️ Página '{page_name}' em desenvolvimento...")
+        st.error(f"❌ Erro de importação na página '{page_name}': {e}")
+        st.warning("⚠️ Página em desenvolvimento...")
         st.info("Esta funcionalidade será implementada em breve.")
         
         # Mostrar progresso do desenvolvimento
@@ -262,7 +286,12 @@ def load_page(page_name: str):
             st.progress(0.3, f"{page_name} - 30% concluído")
     
     except Exception as e:
-        st.error(f"❌ Erro ao carregar página: {e}")
+        st.error(f"❌ Erro ao carregar página '{page_name}': {e}")
+        st.error(f"Tipo do erro: {type(e).__name__}")
+        
+        # Mostrar traceback para debug
+        import traceback
+        st.code(traceback.format_exc(), language="python")
 
 def show_footer():
     """Exibir footer da aplicação"""
@@ -288,19 +317,23 @@ def main():
     
     # Verificar se usuário está autenticado
     if not auth.is_authenticated():
+        # Limpar sidebar quando não autenticado
+        st.sidebar.empty()
         auth.show_login_page()
         return
     
     # Verificar timeout da sessão
     if not auth.check_session_timeout():
+        # Limpar sidebar em caso de timeout
+        st.sidebar.empty()
         st.warning("⏰ Sua sessão expirou. Faça login novamente.")
         auth.show_login_page()
         return
     
-    # Interface principal
+    # Interface principal (apenas após autenticação)
     show_header()
     
-    # Menu de navegação e carregamento de página
+    # Menu de navegação e carregamento de página (apenas para usuários logados)
     selected_page = show_navigation()
     
     # Container principal
