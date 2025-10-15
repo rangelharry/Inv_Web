@@ -6,10 +6,12 @@ Sistema de login, sessões e controle de acesso para Streamlit
 """
 
 import hashlib
+import bcrypt
 import streamlit as st
 from datetime import datetime, timedelta
 from database.connection import get_database
 from typing import Optional, Dict, Any
+import re
 
 class WebAuth:
     """Gerenciador de autenticação web"""
@@ -26,21 +28,79 @@ class WebAuth:
         if 'login_time' not in st.session_state:
             st.session_state.login_time = None
     
-    def hash_password(self, password: str) -> str:
+    def hash_password(self, password: str, use_bcrypt: bool = True) -> str:
         """
-        Gerar hash SHA256 da senha
+        Gerar hash da senha (bcrypt ou SHA256 para compatibilidade)
         
         Args:
             password: Senha em texto plano
+            use_bcrypt: Se True, usa bcrypt; se False, usa SHA256 (compatibilidade)
             
         Returns:
-            Hash SHA256 da senha
+            Hash da senha
         """
-        return hashlib.sha256(password.encode()).hexdigest()
+        if use_bcrypt:
+            # Usar bcrypt com salt automático para novas senhas
+            salt = bcrypt.gensalt()
+            return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        else:
+            # SHA256 para compatibilidade com senhas existentes
+            return hashlib.sha256(password.encode()).hexdigest()
+    
+    def verify_password(self, password: str, stored_hash: str) -> bool:
+        """
+        Verificar senha contra hash armazenado
+        
+        Args:
+            password: Senha em texto plano
+            stored_hash: Hash armazenado no banco
+            
+        Returns:
+            True se senha correta, False caso contrário
+        """
+        # Verificar se é hash bcrypt (começa com $2b$)
+        if stored_hash.startswith('$2b$'):
+            try:
+                return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+            except Exception:
+                return False
+        else:
+            # Hash SHA256 legado
+            sha256_hash = hashlib.sha256(password.encode()).hexdigest()
+            return sha256_hash == stored_hash
+    
+    def validate_password_strength(self, password: str) -> tuple[bool, list[str]]:
+        """
+        Validar força da senha
+        
+        Args:
+            password: Senha a ser validada
+            
+        Returns:
+            Tupla (é_válida, lista_de_erros)
+        """
+        errors = []
+        
+        if len(password) < 8:
+            errors.append("Senha deve ter pelo menos 8 caracteres")
+        
+        if not re.search(r'[A-Z]', password):
+            errors.append("Senha deve conter pelo menos uma letra maiúscula")
+        
+        if not re.search(r'[a-z]', password):
+            errors.append("Senha deve conter pelo menos uma letra minúscula")
+        
+        if not re.search(r'\d', password):
+            errors.append("Senha deve conter pelo menos um número")
+        
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            errors.append("Senha deve conter pelo menos um caractere especial")
+        
+        return len(errors) == 0, errors
     
     def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
         """
-        Autenticar usuário no banco de dados
+        Autenticar usuário no banco de dados com suporte a bcrypt e SHA256
         
         Args:
             username: Nome de usuário
@@ -52,32 +112,66 @@ class WebAuth:
         if not username or not password:
             return None
         
-        password_hash = self.hash_password(password)
-        
+        # Buscar usuário primeiro
         query = """
-            SELECT id, usuario, nome, ativo, ultimo_acesso
+            SELECT id, usuario, nome, ativo, ultimo_acesso, senha_hash, tentativas_login, bloqueado_ate, role
             FROM usuarios
-            WHERE usuario = ? AND senha_hash = ?
+            WHERE usuario = ?
         """
         
-        result = self.db.execute_query(query, (username, password_hash))
+        result = self.db.execute_query(query, (username,))
         
-        if result and len(result) > 0:
-            user = result[0]
-            
-            # Verificar se usuário está ativo
-            if not user['ativo']:
+        if not result or len(result) == 0:
+            return None
+        
+        user = result[0]
+        
+        # Verificar se usuário está ativo
+        if not user['ativo']:
+            return None
+        
+        # Verificar se está bloqueado por tentativas
+        if user.get('bloqueado_ate'):
+            bloqueado_ate = datetime.fromisoformat(user['bloqueado_ate'])
+            if datetime.now() < bloqueado_ate:
                 return None
-            
-            # Atualizar último acesso
-            self.db.execute_update(
-                "UPDATE usuarios SET ultimo_acesso = ? WHERE id = ?",
-                (datetime.now().isoformat(), user['id'])
-            )
-            
-            return user
         
-        return None
+        # Verificar senha
+        stored_hash = user['senha_hash']
+        if not self.verify_password(password, stored_hash):
+            # Incrementar tentativas falhadas
+            tentativas = user.get('tentativas_login', 0) + 1
+            bloqueado_ate = None
+            
+            # Bloquear após 5 tentativas por 30 minutos
+            if tentativas >= 5:
+                bloqueado_ate = (datetime.now() + timedelta(minutes=30)).isoformat()
+                tentativas = 0  # Reset counter
+            
+            self.db.execute_update("""
+                UPDATE usuarios 
+                SET tentativas_login = ?, bloqueado_ate = ? 
+                WHERE id = ?
+            """, (tentativas, bloqueado_ate, user['id']))
+            
+            return None
+        
+        # Login bem-sucedido - resetar tentativas e atualizar último acesso
+        self.db.execute_update("""
+            UPDATE usuarios 
+            SET ultimo_acesso = ?, tentativas_login = 0, bloqueado_ate = NULL
+            WHERE id = ?
+        """, (datetime.now().isoformat(), user['id']))
+        
+        # Verificar se precisa atualizar hash da senha (migração SHA256 -> bcrypt)
+        if not stored_hash.startswith('$2b$'):
+            new_hash = self.hash_password(password, use_bcrypt=True)
+            self.db.execute_update(
+                "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
+                (new_hash, user['id'])
+            )
+        
+        return user
     
     def login_user(self, username: str, password: str) -> bool:
         """
@@ -141,6 +235,60 @@ class WebAuth:
         if self.is_authenticated():
             return st.session_state.get('user_data')
         return None
+    
+    def get_user_role(self) -> str:
+        """
+        Obter role do usuário atual
+        
+        Returns:
+            Role do usuário ('admin', 'usuario', 'visualizador')
+        """
+        user = self.get_current_user()
+        if user:
+            return user.get('role', 'usuario')
+        return 'guest'
+    
+    def has_permission(self, required_role: str) -> bool:
+        """
+        Verificar se usuário tem permissão para ação
+        
+        Args:
+            required_role: Role mínima necessária
+            
+        Returns:
+            True se tem permissão, False caso contrário
+        """
+        role_hierarchy = {
+            'guest': 0,
+            'visualizador': 1,
+            'usuario': 2,
+            'admin': 3
+        }
+        
+        current_role = self.get_user_role()
+        
+        return role_hierarchy.get(current_role, 0) >= role_hierarchy.get(required_role, 0)
+    
+    def require_role(self, required_role: str) -> bool:
+        """
+        Verificar se usuário tem role necessário, bloquear se não tiver
+        
+        Args:
+            required_role: Role mínima necessária
+            
+        Returns:
+            True se tem permissão, False e mostra erro se não tiver
+        """
+        if not self.is_authenticated():
+            st.error("🔒 Você precisa fazer login para acessar esta funcionalidade.")
+            return False
+        
+        if not self.has_permission(required_role):
+            current_role = self.get_user_role()
+            st.error(f"⛔ Acesso negado. Seu nível de acesso ({current_role}) é insuficiente. Necessário: {required_role}")
+            return False
+        
+        return True
     
     def check_session_timeout(self, timeout_hours: int = 8) -> bool:
         """

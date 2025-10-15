@@ -152,6 +152,12 @@ def test_database() -> Dict[str, Any]:
     
     for table in tables_to_test:
         try:
+            # Validar nome da tabela (whitelist) para prevenir SQL injection
+            if table not in ['usuarios', 'equipamentos', 'equipamentos_manuais', 'insumos', 'obras', 'movimentacoes', 'responsaveis', 'auditoria']:
+                results[table] = "Erro: Tabela não permitida"
+                continue
+                
+            # Usar query parametrizada (não é possível parametrizar nome da tabela, mas validamos acima)
             result = db.execute_query(f"SELECT COUNT(*) as count FROM {table}")
             count = result[0]['count'] if result else 0
             results[table] = count

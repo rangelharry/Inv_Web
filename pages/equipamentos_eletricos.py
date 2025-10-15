@@ -121,105 +121,183 @@ def show_equipment_form(equipment_data: Optional[Dict[str, Any]] = None, edit_mo
     
     form_title = "✏️ Editar Equipamento" if edit_mode else "➕ Novo Equipamento"
     
-    with st.form("equipment_form", clear_on_submit=not edit_mode):
-        st.subheader(form_title)
+    # Container para o formulário com melhor design
+    with st.container():
+        st.markdown(f"### {form_title}")
         
-        col1, col2 = st.columns(2)
+        # Exibir informações do equipamento sendo editado
+        if edit_mode and equipment_data:
+            st.info(f"🔧 **Editando equipamento:** {equipment_data.get('codigo', 'N/A')} - {equipment_data.get('nome', 'N/A')}")
         
-        with col1:
-            codigo = st.text_input(
-                "Código *",
-                value=equipment_data.get('codigo', '') if equipment_data else '',
-                help="Código único do equipamento",
-                disabled=edit_mode  # Não permitir editar código
-            )
+        with st.form("equipment_form", clear_on_submit=not edit_mode, border=True):
             
-            nome = st.text_area(
-                "Nome/Descrição *",
-                value=equipment_data.get('nome', '') if equipment_data else '',
-                height=100,
-                help="Nome/Descrição detalhada do equipamento"
-            )
+            # Seção 1: Identificação
+            st.markdown("#### 📝 Informações Básicas")
+            col1, col2 = st.columns(2)
             
-            categoria = st.selectbox(
-                "Categoria *",
-                get_categories(),
-                index=get_categories().index(equipment_data.get('categoria', 'Outros')) if equipment_data and equipment_data.get('categoria') in get_categories() else 0
-            )
-        
-        with col2:
-            status = st.selectbox(
-                "Status *",
-                ["Disponível", "Em uso", "Em manutenção", "Inativo"],
-                index=["Disponível", "Em uso", "Em manutenção", "Inativo"].index(equipment_data.get('status', 'Disponível')) if equipment_data else 0
-            )
+            with col1:
+                codigo = st.text_input(
+                    "Código *",
+                    value=equipment_data.get('codigo', '') if equipment_data else '',
+                    help="Código único do equipamento (não pode ser alterado após criação)",
+                    disabled=edit_mode,  # Não permitir editar código
+                    placeholder="Ex: ELT001, FUR002, etc."
+                )
+                
+                nome = st.text_area(
+                    "Nome/Descrição *",
+                    value=equipment_data.get('nome', '') if equipment_data else '',
+                    height=100,
+                    help="Nome/Descrição detalhada do equipamento",
+                    placeholder="Descreva o equipamento de forma clara e objetiva"
+                )
             
-            localizacao = st.selectbox(
-                "Localização *",
-                get_locations(),
-                index=get_locations().index(equipment_data.get('localizacao', 'Não Definido')) if equipment_data and equipment_data.get('localizacao') in get_locations() else len(get_locations())-1
-            )
-        
-        observacoes = st.text_area(
-            "Observações",
-            value=equipment_data.get('observacoes', '') if equipment_data else '',
-            height=80
-        )
-        
-        # Botões do formulário
-        col_save, col_cancel = st.columns(2)
-        
-        with col_save:
-            submit_button = st.form_submit_button(
-                "💾 Salvar Alterações" if edit_mode else "➕ Adicionar Equipamento",
-                type="primary",
-                use_container_width=True
-            )
-        
-        with col_cancel:
-            cancel_button = st.form_submit_button(
-                "❌ Cancelar",
-                use_container_width=True
-            )
-        
-        if cancel_button:
-            st.session_state.show_add_form = False
-            st.session_state.edit_equipment = None
-            st.rerun()
-        
-        if submit_button:
-            # Validações
-            if not codigo or not nome or not categoria or not status or not localizacao:
-                st.error("❌ Preencha todos os campos obrigatórios (marcados com *)")
-                return
+            with col2:
+                categoria = st.selectbox(
+                    "Categoria *",
+                    get_categories(),
+                    index=get_categories().index(equipment_data.get('categoria', 'Outros')) if equipment_data and equipment_data.get('categoria') in get_categories() else 0,
+                    help="Categoria do equipamento para melhor organização"
+                )
+                
+                status = st.selectbox(
+                    "Status *",
+                    ["Disponível", "Em uso", "Em manutenção", "Inativo"],
+                    index=["Disponível", "Em uso", "Em manutenção", "Inativo"].index(equipment_data.get('status', 'Disponível')) if equipment_data else 0,
+                    help="Status atual do equipamento"
+                )
             
-            # Preparar dados
-            equipment_data_to_save = {
-                'codigo': codigo,
-                'nome': nome,
-                'categoria': categoria,
-                'status': status,
-                'localizacao': localizacao,
-                'observacoes': observacoes
-            }
+            # Seção 2: Localização e Observações
+            st.markdown("#### 📍 Localização e Detalhes")
+            col3, col4 = st.columns([1, 2])
             
-            # Salvar no banco
-            if edit_mode and equipment_data:
-                success = update_equipment(equipment_data['codigo'], equipment_data_to_save)
-                if success:
-                    st.success("✅ Equipamento atualizado com sucesso!")
-                    st.session_state.edit_equipment = None
-                    st.rerun()
-                else:
-                    st.error("❌ Erro ao atualizar equipamento!")
-            else:
-                success = add_equipment(equipment_data_to_save)
-                if success:
-                    st.success("✅ Equipamento adicionado com sucesso!")
-                    st.session_state.show_add_form = False
-                    st.rerun()
-                else:
-                    st.error("❌ Erro ao adicionar equipamento!")
+            with col3:
+                localizacao = st.selectbox(
+                    "Localização *",
+                    get_locations(),
+                    index=get_locations().index(equipment_data.get('localizacao', 'Não Definido')) if equipment_data and equipment_data.get('localizacao') in get_locations() else len(get_locations())-1,
+                    help="Local onde o equipamento está armazenado"
+                )
+            
+            with col4:
+                observacoes = st.text_area(
+                    "Observações",
+                    value=equipment_data.get('observacoes', '') if equipment_data else '',
+                    height=80,
+                    help="Informações adicionais, condições, restrições, etc.",
+                    placeholder="Observações importantes sobre o equipamento..."
+                )
+        
+            # Botões do formulário
+            st.markdown("---")
+            col_save, col_cancel = st.columns(2)
+            
+            with col_save:
+                submit_button = st.form_submit_button(
+                    "💾 Salvar Alterações" if edit_mode else "➕ Adicionar Equipamento",
+                    type="primary",
+                    use_container_width=True
+                )
+            
+            with col_cancel:
+                cancel_button = st.form_submit_button(
+                    "❌ Cancelar",
+                    use_container_width=True
+                )
+            
+            # Processar ações dos botões
+            if cancel_button:
+                st.session_state.show_add_form = False
+                st.session_state.edit_equipment = None
+                st.rerun()
+            
+            if submit_button:
+                # Validações detalhadas
+                errors = []
+                
+                if not codigo or not codigo.strip():
+                    errors.append("Código é obrigatório")
+                elif len(codigo.strip()) < 3:
+                    errors.append("Código deve ter pelo menos 3 caracteres")
+                
+                if not nome or not nome.strip():
+                    errors.append("Nome/Descrição é obrigatório")
+                elif len(nome.strip()) < 5:
+                    errors.append("Nome/Descrição deve ter pelo menos 5 caracteres")
+                
+                if not categoria or categoria == "":
+                    errors.append("Categoria é obrigatória")
+                
+                if not status or status == "":
+                    errors.append("Status é obrigatório")
+                
+                if not localizacao or localizacao == "":
+                    errors.append("Localização é obrigatória")
+                
+                # Verificar se código já existe (apenas para novos equipamentos)
+                if not edit_mode and codigo and codigo.strip():
+                    existing_equipment = get_equipment_by_code(codigo.strip())
+                    if existing_equipment:
+                        errors.append(f"Já existe um equipamento com o código '{codigo.strip()}'")
+                
+                # Exibir erros se houver
+                if errors:
+                    st.error("❌ **Corrija os seguintes erros:**")
+                    for error in errors:
+                        st.error(f"• {error}")
+                    return
+                
+                # Preparar dados validados
+                equipment_data_to_save = {
+                    'codigo': codigo.strip(),
+                    'nome': nome.strip(),
+                    'categoria': categoria,
+                    'status': status,
+                    'localizacao': localizacao,
+                    'observacoes': observacoes.strip() if observacoes else ''
+                }
+                
+                # Salvar no banco
+                try:
+                    if edit_mode and equipment_data:
+                        success = update_equipment(equipment_data['codigo'], equipment_data_to_save)
+                        if success:
+                            st.success("✅ **Equipamento atualizado com sucesso!**")
+                            st.balloons()
+                            st.session_state.edit_equipment = None
+                            st.rerun()
+                        else:
+                            st.error("❌ **Erro ao atualizar equipamento!** Tente novamente.")
+                    else:
+                        success = add_equipment(equipment_data_to_save)
+                        if success:
+                            st.success("✅ **Equipamento adicionado com sucesso!**")
+                            st.balloons()
+                            st.session_state.show_add_form = False
+                            st.rerun()
+                        else:
+                            st.error("❌ **Erro ao adicionar equipamento!** Verifique se o código não está duplicado.")
+                except Exception as e:
+                    st.error(f"❌ **Erro inesperado:** {str(e)}")
+                    st.error("Por favor, tente novamente ou contate o administrador.")
+
+def get_equipment_by_code(codigo: str) -> Optional[Dict[str, Any]]:
+    """Buscar equipamento por código"""
+    db = DatabaseConnection()
+    
+    try:
+        query = "SELECT * FROM equipamentos_eletricos WHERE codigo = ?"
+        result = db.execute_query(query, (codigo,))
+        
+        if result and len(result) > 0:
+            columns = ['id', 'codigo', 'nome', 'categoria', 'status', 'localizacao', 'observacoes', 'created_at', 'updated_at']
+            return dict(zip(columns, result[0]))
+        return None
+    except Exception as e:
+        st.error(f"Erro ao buscar equipamento: {e}")
+        return None
+    finally:
+        db.close()
 
 def add_equipment(equipment_data: Dict[str, Any]) -> bool:
     """Adicionar novo equipamento"""
@@ -405,26 +483,44 @@ def show_equipment_table(df: pd.DataFrame) -> None:
             
             equipment_data = df.iloc[selected_equipment].to_dict()
             
-            # Botões de ação
-            if st.button("✏️ Editar", use_container_width=True):
-                st.session_state.edit_equipment = equipment_data
-                st.rerun()
+            # Obter autenticação para verificar permissões
+            auth = get_auth()
             
-            if st.button("🔄 Movimentar", use_container_width=True):
-                st.session_state.move_equipment = equipment_data
-                st.rerun()
+            # Botões de ação - Layout vertical melhorado
+            st.markdown("##### 🛠️ Ações do Equipamento")
             
-            if st.button("🗑️ Excluir", use_container_width=True, type="secondary"):
-                if st.session_state.get('confirm_delete') != equipment_data['codigo']:
-                    st.session_state.confirm_delete = equipment_data['codigo']
-                    st.warning("⚠️ Clique novamente para confirmar exclusão")
-                else:
-                    if delete_equipment(equipment_data['codigo']):
-                        st.success("✅ Equipamento excluído com sucesso!")
-                        del st.session_state.confirm_delete
-                        st.rerun()
+            # Botões baseados em permissões
+            if auth.has_permission('usuario'):
+                if st.button("✏️ Editar Equipamento", use_container_width=True, type="primary"):
+                    st.session_state.edit_equipment = equipment_data
+                    st.rerun()
+            else:
+                st.button("✏️ Editar Equipamento", use_container_width=True, disabled=True,
+                         help="Permissão insuficiente (necessário: usuário)")
+            
+            if auth.has_permission('visualizador'):
+                if st.button("🔄 Movimentar Equipamento", use_container_width=True):
+                    st.session_state.move_equipment = equipment_data
+                    st.rerun()
+            else:
+                st.button("🔄 Movimentar Equipamento", use_container_width=True, disabled=True,
+                         help="Permissão insuficiente (necessário: visualizador)")
+            
+            if auth.has_permission('admin'):
+                if st.button("🗑️ Excluir Equipamento", use_container_width=True, type="secondary"):
+                    if st.session_state.get('confirm_delete') != equipment_data['codigo']:
+                        st.session_state.confirm_delete = equipment_data['codigo']
+                        st.warning("⚠️ Clique novamente para confirmar exclusão")
                     else:
-                        st.error("❌ Erro ao excluir equipamento!")
+                        if delete_equipment(equipment_data['codigo']):
+                            st.success("✅ Equipamento excluído com sucesso!")
+                            del st.session_state.confirm_delete
+                            st.rerun()
+                        else:
+                            st.error("❌ Erro ao excluir equipamento!")
+            else:
+                st.button("🗑️ Excluir Equipamento", use_container_width=True, disabled=True,
+                         help="Permissão insuficiente (necessário: admin)")
 
 def show():
     """Função principal da página Equipamentos Elétricos"""
@@ -433,6 +529,10 @@ def show():
     auth = get_auth()
     if not auth.is_authenticated():
         auth.show_login_page()
+        return
+    
+    # Verificar permissões básicas
+    if not auth.require_role('visualizador'):
         return
     
     # Header da página
@@ -448,9 +548,13 @@ def show():
     
     with col2:
         st.markdown("#### Ações")
-        if st.button("➕ Novo Equipamento", use_container_width=True, type="primary"):
-            st.session_state.show_add_form = True
-            st.rerun()
+        if auth.has_permission('usuario'):
+            if st.button("➕ Novo Equipamento", use_container_width=True, type="primary"):
+                st.session_state.show_add_form = True
+                st.rerun()
+        else:
+            st.button("➕ Novo Equipamento", use_container_width=True, disabled=True, 
+                     help="Permissão insuficiente (necessário: usuário)")
         
         if st.button("📊 Relatório", use_container_width=True):
             st.info("Funcionalidade de relatório será implementada")

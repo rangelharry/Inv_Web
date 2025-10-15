@@ -233,17 +233,18 @@ def show():
                         st.caption(f"🏁 Término: {row['data_termino']}")
                     
                     with col4:
-                        # Botões de ação
-                        col_edit, col_delete = st.columns(2)
+                        # Botões de ação - Layout melhorado
+                        col_edit, col_delete = st.columns([1, 1])
                         
                         with col_edit:
-                            if st.button("✏️ Editar", key=f"edit_obra_{row['id']}", help="Editar obra/departamento", use_container_width=True):
+                            if st.button("✏️ Editar", key=f"edit_obra_{row['id']}", help="Editar obra/departamento", 
+                                       use_container_width=True, type="primary"):
                                 st.session_state[f'edit_obra_{row["id"]}'] = row.to_dict()
                                 st.rerun()
                         
                         with col_delete:
                             if st.button("🗑️ Excluir", key=f"delete_obra_{row['id']}", help="Excluir obra/departamento", 
-                                       type="secondary", use_container_width=True):
+                                       use_container_width=True, type="secondary"):
                                 if st.session_state.get(f'confirm_delete_obra_{row["id"]}') != row['id']:
                                     st.session_state[f'confirm_delete_obra_{row["id"]}'] = row['id']
                                     st.warning("⚠️ Clique novamente para confirmar exclusão")

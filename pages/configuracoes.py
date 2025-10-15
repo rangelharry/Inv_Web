@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from utils.auth import get_auth, check_authentication
 from database.connection import DatabaseConnection
+from utils.backup import get_backup_manager
 import hashlib
 
 # Verificar autenticação quando acessado diretamente
@@ -133,7 +134,7 @@ def show():
     st.markdown("Configurações gerais e preferências do usuário")
     
     # Seções de configurações
-    tab1, tab2, tab3, tab4 = st.tabs(["👤 Perfil", "🔧 Sistema", "🔒 Segurança", "📊 Relatórios"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["👤 Perfil", "🔧 Sistema", "🔒 Segurança", "📊 Relatórios", "💾 Backup"])
     
     with tab1:
         st.markdown("### 👤 Informações do Perfil")
@@ -236,16 +237,133 @@ def show():
         - Backup: Automático
         """)
     
+    with tab5:
+        st.markdown("### 💾 Sistema de Backup")
+        
+        # Verificar se é admin
+        if not auth.has_permission('admin'):
+            st.warning("⛔ Acesso restrito a administradores")
+            return
+        
+        backup_mgr = get_backup_manager()
+        
+        # Estatísticas de backup
+        st.markdown("#### 📊 Estatísticas")
+        stats = backup_mgr.get_backup_stats()
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Backups", stats['total_backups'])
+        
+        with col2:
+            if stats['total_size'] > 0:
+                size_mb = stats['total_size'] / (1024 * 1024)
+                st.metric("Tamanho Total", f"{size_mb:.1f} MB")
+            else:
+                st.metric("Tamanho Total", "0 MB")
+        
+        with col3:
+            if stats['last_backup']:
+                st.metric("Último Backup", stats['last_backup'].strftime('%d/%m/%Y %H:%M'))
+            else:
+                st.metric("Último Backup", "Nenhum")
+        
+        with col4:
+            if stats['oldest_backup']:
+                st.metric("Backup Mais Antigo", stats['oldest_backup'].strftime('%d/%m/%Y'))
+            else:
+                st.metric("Backup Mais Antigo", "Nenhum")
+        
+        st.markdown("---")
+        
+        # Ações de backup
+        st.markdown("#### 🛠️ Ações")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("💾 Criar Backup Manual", use_container_width=True, type="primary"):
+                with st.spinner("Criando backup..."):
+                    success, result = backup_mgr.create_backup(compress=True)
+                    
+                    if success:
+                        st.success(f"✅ Backup criado: {os.path.basename(result)}")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Erro: {result}")
+        
+        with col2:
+            if st.button("🧹 Limpar Backups Antigos", use_container_width=True):
+                with st.spinner("Limpando backups antigos..."):
+                    removed_count, removed_files = backup_mgr.clean_old_backups(keep_days=30, keep_count=5)
+                    
+                    if removed_count > 0:
+                        st.success(f"✅ {removed_count} backups antigos removidos")
+                        with st.expander("Ver arquivos removidos"):
+                            for filename in removed_files:
+                                st.text(f"🗑️ {filename}")
+                        st.rerun()
+                    else:
+                        st.info("ℹ️ Nenhum backup antigo para remover")
+        
+        with col3:
+            if st.button("🔄 Backup Automático", use_container_width=True):
+                with st.spinner("Verificando backup automático..."):
+                    created = backup_mgr.auto_backup()
+                    
+                    if created:
+                        st.success("✅ Backup automático criado")
+                        st.rerun()
+                    else:
+                        st.info("ℹ️ Backup automático não necessário (já existe backup de hoje)")
+        
+        st.markdown("---")
+        
+        # Lista de backups
+        st.markdown("#### 📋 Backups Disponíveis")
+        
+        backups = backup_mgr.list_backups()
+        
+        if backups:
+            for backup in backups[:10]:  # Mostrar apenas os 10 mais recentes
+                col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+                
+                with col1:
+                    st.text(backup['filename'])
+                
+                with col2:
+                    st.text(backup['date'].strftime('%d/%m/%Y %H:%M'))
+                
+                with col3:
+                    size_mb = backup['size'] / (1024 * 1024)
+                    compression = " (Comprimido)" if backup['compressed'] else ""
+                    st.text(f"{size_mb:.1f} MB{compression}")
+                
+                with col4:
+                    if st.button("🔄", key=f"restore_{backup['filename']}", help="Restaurar backup"):
+                        if st.button("⚠️ Confirmar Restauração", key=f"confirm_{backup['filename']}", type="secondary"):
+                            with st.spinner("Restaurando backup..."):
+                                success, result = backup_mgr.restore_backup(backup['filepath'])
+                                
+                                if success:
+                                    st.success("✅ Backup restaurado com sucesso!")
+                                    st.warning("⚠️ Reinicie a aplicação para aplicar as mudanças")
+                                else:
+                                    st.error(f"❌ Erro: {result}")
+        else:
+            st.info("📝 Nenhum backup encontrado. Crie o primeiro backup manual.")
+    
     # Informações sobre desenvolvimento
     st.markdown("---")
-    st.info("""
-    💡 **Funcionalidades em desenvolvimento:**
+    st.success("""
+    ✅ **Funcionalidades implementadas:**
     - ✅ Interface de configurações
-    - ⏳ Alteração de senha
-    - ⏳ Configurações de tema
-    - ⏳ Notificações por email
-    - ⏳ Backup automático
-    - ⏳ Personalização avançada
+    - ✅ Sistema de backup completo
+    - ✅ Controle de permissões por role
+    - ✅ Segurança aprimorada (bcrypt, proteção força bruta)
+    - ✅ Auditoria de ações
+    - ✅ Relatórios com exportação
     """)
 
 if __name__ == "__main__":

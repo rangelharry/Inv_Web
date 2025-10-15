@@ -16,6 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 # Imports locais
 from database.connection import init_database, get_database
 from utils.auth import get_auth
+from utils.backup import get_backup_manager
 
 # Configuração dinâmica da página
 # Verificar se usuário está logado para configurar sidebar
@@ -362,8 +363,24 @@ def main():
     # Footer
     show_footer()
 
+def init_system():
+    """Inicializar sistema e backup automático"""
+    try:
+        # Executar backup automático na inicialização (uma vez por dia)
+        if 'backup_checked' not in st.session_state:
+            backup_mgr = get_backup_manager()
+            backup_mgr.auto_backup()  # Cria backup se necessário
+            st.session_state.backup_checked = True
+    except Exception as e:
+        # Não falhar a aplicação se backup der erro
+        pass
+
 if __name__ == "__main__":
     try:
+        # Inicializar sistema
+        init_system()
+        
+        # Executar aplicação principal
         main()
     except Exception as e:
         st.error(f"❌ Erro crítico na aplicação: {e}")
