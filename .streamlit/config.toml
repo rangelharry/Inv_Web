@@ -22,14 +22,7 @@ font = "sans serif"
 
 [runner]
 magicEnabled = true
-installTracer = false
-fixMatplotlib = true
 
 [logger]
 level = "info"
 messageFormat = "%(asctime)s %(message)s"
-
-[client]
-caching = true
-displayEnabled = true
-showErrorDetails = true

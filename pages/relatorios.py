@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Sistema de Inventário Web - Relatórios
-Página de relatórios e análises
+Sistema de Inventário Web - Relatórios Avançados
+Página de relatórios detalhados com gráficos, filtros e exportação
 """
 
 import streamlit as st
@@ -11,234 +11,369 @@ import os
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import io
 import base64
+import json
 
 # Adicionar pasta raiz ao path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from utils.auth import get_auth, check_authentication
-from database.connection import get_database
+from database.connection import DatabaseConnection
+from utils.logging import SystemLogger
 
 # Verificar autenticação quando acessado diretamente
 if not check_authentication():
     st.stop()
 
-def get_inventario_data():
-    """Obter dados do inventário para relatórios"""
-    db = get_database()
-    
-    # Equipamentos elétricos
-    equipamentos_eletricos = db.execute_query("""
-        SELECT 'Elétrico' as tipo, codigo, nome, categoria, status, localizacao
-        FROM equipamentos_eletricos
-    """)
-    
-    # Equipamentos manuais
-    equipamentos_manuais = db.execute_query("""
-        SELECT 'Manual' as tipo, codigo, nome, categoria, status, localizacao
-        FROM equipamentos_manuais
-    """)
-    
-    # Insumos
-    insumos = db.execute_query("""
-        SELECT 'Insumo' as tipo, codigo, nome, categoria, CAST(estoque_atual as TEXT) as status, localizacao
-        FROM insumos
-    """)
-    
-    # Combinar todos os dados
-    all_data = equipamentos_eletricos + equipamentos_manuais + insumos
-    
-    return pd.DataFrame(all_data) if all_data else pd.DataFrame()
+logger = SystemLogger()
 
-def create_excel_download(df, filename):
-    """Criar link de download para Excel"""
-    output = io.BytesIO()
+class AdvancedReportsManager:
+    """Gerenciador de relatórios avançados"""
     
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Relatório')
-        
-        # Formatação básica
-        workbook = writer.book
-        worksheet = writer.sheets['Relatório']
-        
-        # Formato do cabeçalho
-        header_format = workbook.add_format({
-            'bold': True,
-            'text_wrap': True,
-            'valign': 'top',
-            'fg_color': '#D7E4BC',
-            'border': 1
-        })
-        
-        # Aplicar formato ao cabeçalho
-        for col_num, value in enumerate(df.columns.values):
-            worksheet.write(0, col_num, value, header_format)
-            worksheet.set_column(col_num, col_num, 15)
+    def __init__(self):
+        self.db = DatabaseConnection()
     
-    processed_data = output.getvalue()
-    b64 = base64.b64encode(processed_data).decode()
+    def get_inventario_completo(self):
+        """Obter dados completos do inventário"""
+        try:
+            # Equipamentos elétricos
+            equipamentos_eletricos = self.db.execute_query("""
+                SELECT 
+                    'Equipamento Elétrico' as tipo,
+                    codigo, nome as descricao, marca, categoria, status, 
+                    localizacao, valor_compra as valor, data_compra
+                FROM equipamentos_eletricos
+            """)
+            
+            # Equipamentos manuais
+            equipamentos_manuais = self.db.execute_query("""
+                SELECT 
+                    'Equipamento Manual' as tipo,
+                    codigo, descricao, marca, tipo as categoria, status, 
+                    localizacao, valor, data_compra
+                FROM equipamentos_manuais
+            """)
+            
+            # Insumos
+            insumos = self.db.execute_query("""
+                SELECT 
+                    'Insumo' as tipo,
+                    codigo, descricao, '' as marca, categoria, 
+                    CASE 
+                        WHEN quantidade > 0 THEN 'Disponível'
+                        ELSE 'Esgotado'
+                    END as status,
+                    localizacao, preco_unitario as valor, '' as data_compra
+                FROM insumos
+            """)
+            
+            # Combinar todos os dados
+            all_data = []
+            for items in [equipamentos_eletricos or [], equipamentos_manuais or [], insumos or []]:
+                all_data.extend(items)
+            
+            return pd.DataFrame(all_data) if all_data else pd.DataFrame()
+            
+        except Exception as e:
+            logger.log_security_event("ERROR", f"Erro ao obter dados do inventário: {e}")
+            return pd.DataFrame()
     
-    return f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="{filename}">📥 Baixar Excel</a>'
+    def get_movimentacoes_data(self, days=30):
+        """Obter dados de movimentações"""
+        try:
+            data_limite = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+            
+            query = """
+                SELECT 
+                    m.id, m.codigo as item_codigo, m.origem, m.destino, 
+                    m.quantidade, m.responsavel, m.data as data_movimentacao, m.status,
+                    CASE 
+                        WHEN ee.codigo IS NOT NULL THEN 'Equipamento Elétrico'
+                        WHEN em.codigo IS NOT NULL THEN 'Equipamento Manual'
+                        WHEN i.codigo IS NOT NULL THEN 'Insumo'
+                        ELSE 'Desconhecido'
+                    END as tipo_item,
+                    CASE 
+                        WHEN ee.codigo IS NOT NULL THEN ee.descricao
+                        WHEN em.codigo IS NOT NULL THEN em.descricao
+                        WHEN i.codigo IS NOT NULL THEN i.descricao
+                        ELSE 'Item não encontrado'
+                    END as item_descricao
+                FROM movimentacoes m
+                LEFT JOIN equipamentos_eletricos ee ON m.codigo = ee.codigo
+                LEFT JOIN equipamentos_manuais em ON m.codigo = em.codigo
+                LEFT JOIN insumos i ON m.codigo = i.codigo
+                WHERE DATE(m.data) >= ?
+                ORDER BY m.data DESC
+            """
+            
+            result = self.db.execute_query(query, (data_limite,))
+            return pd.DataFrame(result) if result else pd.DataFrame()
+            
+        except Exception as e:
+            logger.log_security_event("ERROR", f"Erro ao obter movimentações: {e}")
+            return pd.DataFrame()
+    
+    def generate_dashboard_metrics(self, df_inventario):
+        """Gerar métricas para dashboard"""
+        if df_inventario.empty:
+            return {}
+        
+        # Calcular valor total (convertendo strings para float)
+        valor_total = 0
+        if 'valor' in df_inventario.columns:
+            # Converter valores para numérico, ignorando valores não numéricos
+            valores_numericos = pd.to_numeric(df_inventario['valor'], errors='coerce')
+            valor_total = valores_numericos.fillna(0).sum()
+        
+        metrics = {
+            'total_itens': len(df_inventario),
+            'tipos_distribuicao': df_inventario['tipo'].value_counts().to_dict(),
+            'status_distribuicao': df_inventario['status'].value_counts().to_dict(),
+            'localizacoes': df_inventario['localizacao'].value_counts().to_dict(),
+            'valor_total': valor_total
+        }
+        
+        return metrics
+    
+    def create_status_pie_chart(self, df_inventario):
+        """Criar gráfico de pizza para status dos itens"""
+        if df_inventario.empty:
+            return None
+        
+        status_counts = df_inventario['status'].value_counts()
+        
+        fig = px.pie(
+            values=status_counts.values,
+            names=status_counts.index,
+            title="Distribuição por Status",
+            color_discrete_sequence=px.colors.qualitative.Set3
+        )
+        
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+        fig.update_layout(height=400)
+        
+        return fig
+    
+    def create_tipo_bar_chart(self, df_inventario):
+        """Criar gráfico de barras para tipos de itens"""
+        if df_inventario.empty:
+            return None
+        
+        tipo_counts = df_inventario['tipo'].value_counts()
+        
+        fig = px.bar(
+            x=tipo_counts.index,
+            y=tipo_counts.values,
+            title="Distribuição por Tipo de Item",
+            labels={'x': 'Tipo', 'y': 'Quantidade'},
+            color=tipo_counts.values,
+            color_continuous_scale='viridis'
+        )
+        
+        fig.update_layout(height=400, showlegend=False)
+        
+        return fig
+    
+    def create_localizacao_chart(self, df_inventario):
+        """Criar gráfico para localização dos itens"""
+        if df_inventario.empty:
+            return None
+        
+        loc_counts = df_inventario['localizacao'].value_counts().head(10)
+        
+        fig = px.bar(
+            x=loc_counts.values,
+            y=loc_counts.index,
+            orientation='h',
+            title="Top 10 Localizações",
+            labels={'x': 'Quantidade', 'y': 'Localização'},
+            color=loc_counts.values,
+            color_continuous_scale='blues'
+        )
+        
+        fig.update_layout(height=400, showlegend=False)
+        
+        return fig
+    
+    def create_movimentacoes_timeline(self, df_movimentacoes):
+        """Criar timeline das movimentações"""
+        if df_movimentacoes.empty:
+            return None
+        
+        # Converter data para datetime
+        df_movimentacoes['data_movimentacao'] = pd.to_datetime(df_movimentacoes['data_movimentacao'])
+        
+        # Agrupar por dia
+        daily_counts = df_movimentacoes.groupby(df_movimentacoes['data_movimentacao'].dt.date).size()
+        
+        fig = px.line(
+            x=daily_counts.index,
+            y=daily_counts.values,
+            title="Movimentações ao Longo do Tempo",
+            labels={'x': 'Data', 'y': 'Número de Movimentações'}
+        )
+        
+        fig.update_layout(height=400)
+        
+        return fig
+    
+    def create_movimentacoes_by_type(self, df_movimentacoes):
+        """Criar gráfico de movimentações por tipo"""
+        if df_movimentacoes.empty:
+            return None
+        
+        type_counts = df_movimentacoes['tipo_item'].value_counts()
+        
+        fig = px.bar(
+            x=type_counts.index,
+            y=type_counts.values,
+            title="Movimentações por Tipo de Item",
+            labels={'x': 'Tipo', 'y': 'Movimentações'},
+            color=type_counts.values,
+            color_continuous_scale='plasma'
+        )
+        
+        fig.update_layout(height=400, showlegend=False)
+        
+        return fig
+    
+    def generate_excel_report(self, df_inventario, df_movimentacoes=None):
+        """Gerar relatório em Excel"""
+        try:
+            output = io.BytesIO()
+            
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                # Aba do inventário
+                df_inventario.to_excel(writer, sheet_name='Inventário Completo', index=False)
+                
+                if df_movimentacoes is not None and not df_movimentacoes.empty:
+                    # Aba das movimentações
+                    df_movimentacoes.to_excel(writer, sheet_name='Movimentações', index=False)
+                
+                # Aba de estatísticas
+                if not df_inventario.empty:
+                    stats_data = {
+                        'Métrica': ['Total de Itens', 'Equipamentos Elétricos', 'Equipamentos Manuais', 'Insumos'],
+                        'Valor': [
+                            len(df_inventario),
+                            len(df_inventario[df_inventario['tipo'] == 'Equipamento Elétrico']),
+                            len(df_inventario[df_inventario['tipo'] == 'Equipamento Manual']),
+                            len(df_inventario[df_inventario['tipo'] == 'Insumo'])
+                        ]
+                    }
+                    
+                    pd.DataFrame(stats_data).to_excel(writer, sheet_name='Estatísticas', index=False)
+            
+            output.seek(0)
+            return output
+            
+        except Exception as e:
+            logger.log_security_event("ERROR", f"Erro ao gerar relatório Excel: {e}")
+            return None
+    
+    def generate_csv_report(self, df_inventario):
+        """Gerar relatório em CSV"""
+        try:
+            output = io.StringIO()
+            df_inventario.to_csv(output, index=False, encoding='utf-8')
+            return output.getvalue()
+        except Exception as e:
+            logger.log_security_event("ERROR", f"Erro ao gerar relatório CSV: {e}")
+            return None
 
-def show_inventario_completo():
-    """Mostrar relatório de inventário completo"""
-    st.subheader("📄 Relatório de Inventário Completo")
+def show_filters(df):
+    """Mostrar filtros avançados"""
+    st.markdown("### 🔍 Filtros Avançados")
     
-    with st.spinner("Carregando dados..."):
-        df = get_inventario_data()
-    
-    if df.empty:
-        st.warning("Nenhum dado encontrado para o relatório.")
-        return
-    
-    # Estatísticas gerais
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total de Itens", len(df))
+        tipos_disponiveis = ['Todos'] + list(df['tipo'].dropna().unique()) if not df.empty else ['Todos']
+        tipo_filter = st.selectbox("Tipo:", tipos_disponiveis)
     
     with col2:
-        equipamentos = len(df[df['tipo'].isin(['Elétrico', 'Manual'])])
-        st.metric("Equipamentos", equipamentos)
+        status_disponiveis = ['Todos'] + list(df['status'].dropna().unique()) if not df.empty else ['Todos']
+        status_filter = st.selectbox("Status:", status_disponiveis)
     
     with col3:
-        insumos = len(df[df['tipo'] == 'Insumo'])
-        st.metric("Insumos", insumos)
+        localizacoes_disponiveis = ['Todas'] + list(df['localizacao'].dropna().unique()) if not df.empty else ['Todas']
+        localizacao_filter = st.selectbox("Localização:", localizacoes_disponiveis)
     
     with col4:
-        categorias = df['categoria'].nunique()
-        st.metric("Categorias", categorias)
+        search_term = st.text_input("Buscar:", placeholder="Código ou descrição...")
     
-    st.markdown("---")
+    # Aplicar filtros
+    df_filtered = df.copy() if not df.empty else df
     
-    # Gráficos
-    col1, col2 = st.columns(2)
+    if not df_filtered.empty:
+        if tipo_filter != "Todos":
+            df_filtered = df_filtered[df_filtered['tipo'] == tipo_filter]
+        
+        if status_filter != "Todos":
+            df_filtered = df_filtered[df_filtered['status'] == status_filter]
+        
+        if localizacao_filter != "Todas":
+            df_filtered = df_filtered[df_filtered['localizacao'] == localizacao_filter]
+        
+        if search_term:
+            mask = (
+                df_filtered['codigo'].str.contains(search_term, case=False, na=False) |
+                df_filtered['descricao'].str.contains(search_term, case=False, na=False)
+            )
+            df_filtered = df_filtered[mask]
     
-    with col1:
-        # Gráfico por tipo
-        tipo_counts = df['tipo'].value_counts()
-        fig_tipo = px.pie(values=tipo_counts.values, names=tipo_counts.index, 
-                         title="Distribuição por Tipo")
-        st.plotly_chart(fig_tipo, use_container_width=True)
+    return df_filtered
+
+def show_export_options(reports_manager, df_inventario, df_movimentacoes=None):
+    """Mostrar opções de exportação"""
+    st.markdown("### 📤 Exportar Relatórios")
     
-    with col2:
-        # Gráfico por categoria
-        cat_counts = df['categoria'].value_counts().head(10)
-        fig_cat = px.bar(x=cat_counts.values, y=cat_counts.index, 
-                        orientation='h', title="Top 10 Categorias")
-        st.plotly_chart(fig_cat, use_container_width=True)
-    
-    # Tabela de dados
-    st.markdown("### 📋 Detalhes do Inventário")
-    
-    # Filtros
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        tipo_filter = st.selectbox("Filtrar por Tipo", 
-                                  ["Todos"] + list(df['tipo'].unique()))
+        if st.button("📊 Exportar Excel", help="Exportar inventário completo em Excel"):
+            excel_data = reports_manager.generate_excel_report(df_inventario, df_movimentacoes)
+            
+            if excel_data:
+                st.download_button(
+                    label="⬇️ Download Excel",
+                    data=excel_data,
+                    file_name=f"inventario_completo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                st.success("✅ Relatório Excel gerado!")
     
     with col2:
-        categoria_filter = st.selectbox("Filtrar por Categoria", 
-                                       ["Todas"] + list(df['categoria'].unique()))
+        if st.button("📋 Exportar CSV", help="Exportar inventário em CSV"):
+            csv_data = reports_manager.generate_csv_report(df_inventario)
+            
+            if csv_data:
+                st.download_button(
+                    label="⬇️ Download CSV",
+                    data=csv_data,
+                    file_name=f"inventario_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
+                )
+                st.success("✅ Relatório CSV gerado!")
     
     with col3:
-        status_filter = st.selectbox("Filtrar por Status", 
-                                    ["Todos"] + list(df['status'].unique()))
-    
-    # Aplicar filtros
-    filtered_df = df.copy()
-    
-    if tipo_filter != "Todos":
-        filtered_df = filtered_df[filtered_df['tipo'] == tipo_filter]
-    
-    if categoria_filter != "Todas":
-        filtered_df = filtered_df[filtered_df['categoria'] == categoria_filter]
-    
-    if status_filter != "Todos":
-        filtered_df = filtered_df[filtered_df['status'] == status_filter]
-    
-    # Mostrar tabela
-    st.dataframe(filtered_df, use_container_width=True)
-    
-    # Download
-    if not filtered_df.empty:
-        st.markdown("### 📥 Download")
-        filename = f"inventario_completo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        excel_link = create_excel_download(filtered_df, filename)
-        st.markdown(excel_link, unsafe_allow_html=True)
-
-def show_movimentacoes_relatorio():
-    """Mostrar relatório de movimentações"""
-    st.subheader("📋 Relatório de Movimentações")
-    
-    db = get_database()
-    
-    # Período de consulta
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        data_inicio = st.date_input("Data Início", 
-                                   value=datetime.now() - timedelta(days=30))
-    
-    with col2:
-        data_fim = st.date_input("Data Fim", 
-                                value=datetime.now())
-    
-    # Buscar movimentações
-    movimentacoes = db.execute_query("""
-        SELECT codigo, origem, destino, data, responsavel, status, quantidade
-        FROM movimentacoes
-        WHERE date(data) BETWEEN ? AND ?
-        ORDER BY data DESC
-    """, (data_inicio.isoformat(), data_fim.isoformat()))
-    
-    if not movimentacoes:
-        st.warning("Nenhuma movimentação encontrada no período selecionado.")
-        return
-    
-    df_mov = pd.DataFrame(movimentacoes)
-    df_mov['data'] = pd.to_datetime(df_mov['data'])
-    
-    # Estatísticas
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Total Movimentações", len(df_mov))
-    
-    with col2:
-        concluidas = len(df_mov[df_mov['status'] == 'concluida'])
-        st.metric("Concluídas", concluidas)
-    
-    with col3:
-        pendentes = len(df_mov[df_mov['status'] == 'pendente'])
-        st.metric("Pendentes", pendentes)
-    
-    with col4:
-        responsaveis = df_mov['responsavel'].nunique()
-        st.metric("Responsáveis", responsaveis)
-    
-    # Gráfico de movimentações por dia
-    df_daily = df_mov.groupby(df_mov['data'].dt.date).size().reset_index()
-    df_daily.columns = ['data', 'movimentacoes']
-    
-    fig_daily = px.line(df_daily, x='data', y='movimentacoes', 
-                       title="Movimentações por Dia")
-    st.plotly_chart(fig_daily, use_container_width=True)
-    
-    # Tabela de movimentações
-    st.markdown("### 📋 Detalhes das Movimentações")
-    st.dataframe(df_mov, use_container_width=True)
-    
-    # Download
-    filename = f"movimentacoes_{data_inicio}_{data_fim}.xlsx"
-    excel_link = create_excel_download(df_mov, filename)
-    st.markdown(excel_link, unsafe_allow_html=True)
+        if st.button("📄 Gerar JSON", help="Exportar dados em formato JSON"):
+            json_data = df_inventario.to_json(orient='records', indent=2)
+            
+            st.download_button(
+                label="⬇️ Download JSON",
+                data=json_data,
+                file_name=f"inventario_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json"
+            )
+            st.success("✅ Relatório JSON gerado!")
 
 def show():
-    """Função principal da página Relatórios"""
+    """Função principal da página de Relatórios Avançados"""
     
     # Verificar autenticação
     auth = get_auth()
@@ -246,169 +381,301 @@ def show():
         auth.show_login_page()
         return
     
-    st.markdown(f"## 📈 Relatórios")
-    st.markdown("Relatórios gerenciais e operacionais")
+    user = auth.get_current_user()
     
-    # Verificar permissões (relatórios precisam de pelo menos papel de visualizador)
-    if not auth.require_role('visualizador'):
-        return
+    st.markdown("## 📈 Relatórios Avançados")
+    st.markdown("**Análises detalhadas** - Gráficos, filtros avançados e exportação")
     
-    # Seções de relatórios
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Inventário", "📋 Movimentações", "💰 Financeiro", "🛠️ Sistema"])
+    # Instanciar gerenciador de relatórios
+    reports_manager = AdvancedReportsManager()
     
-    with tab1:
-        st.markdown("### 📊 Relatórios de Inventário")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("📄 Inventário Completo", use_container_width=True, type="primary"):
-                st.session_state.show_inventario_completo = True
-                st.rerun()
-            
-            if st.button("⚡ Equipamentos Elétricos", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-            
-            if st.button("🔧 Equipamentos Manuais", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-        
-        with col2:
-            if st.button("📦 Estoque de Insumos", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-            
-            if st.button("⚠️ Alertas de Estoque", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-            
-            if st.button("📊 Status dos Equipamentos", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-        
-        # Mostrar relatório se solicitado
-        if st.session_state.get('show_inventario_completo', False):
-            st.markdown("---")
-            show_inventario_completo()
-            if st.button("🔙 Voltar aos Relatórios"):
-                st.session_state.show_inventario_completo = False
-                st.rerun()
+    # Tabs para organizar os relatórios
+    tab_dashboard, tab_inventario, tab_movimentacoes, tab_analises = st.tabs([
+        "📊 Dashboard", "📋 Inventário", "🔄 Movimentações", "📈 Análises"
+    ])
     
-    with tab2:
-        st.markdown("### 📋 Relatórios de Movimentação")
+    with tab_dashboard:
+        st.markdown("### 📊 Dashboard Executivo")
         
-        col1, col2 = st.columns(2)
+        # Carregar dados
+        with st.spinner("📊 Carregando dados..."):
+            df_inventario = reports_manager.get_inventario_completo()
+            df_movimentacoes = reports_manager.get_movimentacoes_data(30)
         
-        with col1:
-            if st.button("📊 Movimentações por Período", use_container_width=True, type="primary"):
-                st.session_state.show_movimentacoes = True
-                st.rerun()
+        if not df_inventario.empty:
+            # Métricas principais
+            metrics = reports_manager.generate_dashboard_metrics(df_inventario)
             
-            if st.button("🏗️ Movimentações por Obra", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-        
-        with col2:
-            if st.button("👤 Movimentações por Responsável", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
+            col1, col2, col3, col4 = st.columns(4)
             
-            if st.button("📍 Movimentações por Local", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-        
-        # Mostrar relatório se solicitado
-        if st.session_state.get('show_movimentacoes', False):
-            st.markdown("---")
-            show_movimentacoes_relatorio()
-            if st.button("🔙 Voltar aos Relatórios", key="back_mov"):
-                st.session_state.show_movimentacoes = False
-                st.rerun()
-    
-    with tab3:
-        st.markdown("### 💰 Relatórios Financeiros")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("💰 Valor do Inventário", use_container_width=True):
-                st.info("📝 Relatório financeiro em desenvolvimento...")
+            with col1:
+                st.metric("Total de Itens", metrics['total_itens'])
             
-            if st.button("📈 Custos por Obra", use_container_width=True):
-                st.info("📝 Relatório financeiro em desenvolvimento...")
-        
-        with col2:
-            if st.button("💸 Depreciação", use_container_width=True):
-                st.info("📝 Relatório financeiro em desenvolvimento...")
+            with col2:
+                equipamentos_total = (
+                    metrics['tipos_distribuicao'].get('Equipamento Elétrico', 0) +
+                    metrics['tipos_distribuicao'].get('Equipamento Manual', 0)
+                )
+                st.metric("Equipamentos", equipamentos_total)
             
-            if st.button("📊 ROI por Equipamento", use_container_width=True):
-                st.info("📝 Relatório financeiro em desenvolvimento...")
-    
-    with tab4:
-        st.markdown("### 🛠️ Relatórios do Sistema")
-        
-        # Apenas admins podem ver relatórios do sistema
-        if auth.has_permission('admin'):
+            with col3:
+                insumos_total = metrics['tipos_distribuicao'].get('Insumo', 0)
+                st.metric("Insumos", insumos_total)
+            
+            with col4:
+                valor_total = f"R$ {metrics['valor_total']:,.2f}" if metrics['valor_total'] > 0 else "N/A"
+                st.metric("Valor Total", valor_total)
+            
+            st.divider()
+            
+            # Gráficos
             col1, col2 = st.columns(2)
             
             with col1:
-                if st.button("👥 Usuários e Acessos", use_container_width=True):
-                    db = get_database()
-                    usuarios = db.execute_query("""
-                        SELECT usuario, nome, role, ativo, ultimo_acesso
-                        FROM usuarios
-                        ORDER BY ultimo_acesso DESC
-                    """)
-                    
-                    if usuarios:
-                        df_users = pd.DataFrame(usuarios)
-                        st.dataframe(df_users, use_container_width=True)
-                
-                if st.button("📋 Log de Auditoria", use_container_width=True):
-                    db = get_database()
-                    auditoria = db.execute_query("""
-                        SELECT usuario, acao, detalhes, timestamp
-                        FROM auditoria
-                        ORDER BY timestamp DESC
-                        LIMIT 100
-                    """)
-                    
-                    if auditoria:
-                        df_audit = pd.DataFrame(auditoria)
-                        st.dataframe(df_audit, use_container_width=True)
+                fig_status = reports_manager.create_status_pie_chart(df_inventario)
+                if fig_status:
+                    st.plotly_chart(fig_status, use_container_width=True)
             
             with col2:
-                if st.button("🗄️ Status do Banco", use_container_width=True):
-                    from database.connection import test_database
-                    stats = test_database()
-                    
-                    for table, count in stats.items():
-                        st.metric(f"Tabela {table}", count)
-                
-                if st.button("� Estatísticas de Backup", use_container_width=True):
-                    from utils.backup import get_backup_manager
-                    backup_mgr = get_backup_manager()
-                    stats = backup_mgr.get_backup_stats()
-                    
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        st.metric("Total Backups", stats['total_backups'])
-                        if stats['last_backup']:
-                            st.metric("Último Backup", stats['last_backup'].strftime('%d/%m/%Y'))
-                    
-                    with col_b:
-                        if stats['total_size'] > 0:
-                            size_mb = stats['total_size'] / (1024 * 1024)
-                            st.metric("Tamanho Total", f"{size_mb:.1f} MB")
+                fig_tipo = reports_manager.create_tipo_bar_chart(df_inventario)
+                if fig_tipo:
+                    st.plotly_chart(fig_tipo, use_container_width=True)
+            
+            # Gráfico de localização
+            fig_loc = reports_manager.create_localizacao_chart(df_inventario)
+            if fig_loc:
+                st.plotly_chart(fig_loc, use_container_width=True)
+        
         else:
-            st.warning("⛔ Acesso restrito a administradores")
+            st.warning("⚠️ Nenhum dado encontrado para gerar o dashboard")
     
-    # Informações sobre funcionalidades
-    st.markdown("---")
-    st.success("""
-    ✅ **Funcionalidades implementadas:**
-    - ✅ Relatório de Inventário Completo com gráficos
-    - ✅ Relatório de Movimentações por período
-    - ✅ Exportação para Excel
-    - ✅ Gráficos interativos (Plotly)
-    - ✅ Filtros avançados
-    - ✅ Relatórios do sistema (admin)
-    - ✅ Controle de permissões
-    """)
+    with tab_inventario:
+        st.markdown("### 📋 Relatório de Inventário")
+        
+        # Carregar dados
+        with st.spinner("📊 Carregando inventário..."):
+            df_inventario = reports_manager.get_inventario_completo()
+        
+        if not df_inventario.empty:
+            # Filtros
+            df_filtered = show_filters(df_inventario)
+            
+            st.divider()
+            
+            # Tabela de dados
+            st.markdown(f"### 📋 Inventário ({len(df_filtered)} itens)")
+            
+            # Configurar exibição da tabela
+            columns_to_show = ['tipo', 'codigo', 'descricao', 'categoria', 'status', 'localizacao']
+            if 'marca' in df_filtered.columns:
+                columns_to_show.append('marca')
+            if 'valor' in df_filtered.columns:
+                columns_to_show.append('valor')
+            
+            # Usar função segura para exibir DataFrame
+            from utils.dataframe_utils import safe_dataframe
+            safe_dataframe(
+                df_filtered[columns_to_show],
+                use_container_width=True,
+                height=400
+            )
+            
+            st.divider()
+            
+            # Opções de exportação
+            show_export_options(reports_manager, df_filtered)
+        
+        else:
+            st.warning("⚠️ Nenhum item encontrado no inventário")
+    
+    with tab_movimentacoes:
+        st.markdown("### 🔄 Relatório de Movimentações")
+        
+        # Filtro de período
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            dias_periodo = st.slider("Período (dias)", 7, 365, 30)
+        
+        with col2:
+            incluir_pendentes = st.checkbox("Incluir movimentações pendentes", value=True)
+        
+        # Carregar dados
+        with st.spinner("📊 Carregando movimentações..."):
+            df_movimentacoes = reports_manager.get_movimentacoes_data(dias_periodo)
+        
+        if not df_movimentacoes.empty:
+            # Filtrar pendentes se necessário
+            if not incluir_pendentes:
+                df_movimentacoes = df_movimentacoes[df_movimentacoes['status'] != 'Pendente']
+            
+            # Métricas das movimentações
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Total de Movimentações", len(df_movimentacoes))
+            
+            with col2:
+                aprovadas = len(df_movimentacoes[df_movimentacoes['status'] == 'Aprovada'])
+                st.metric("Aprovadas", aprovadas)
+            
+            with col3:
+                pendentes = len(df_movimentacoes[df_movimentacoes['status'] == 'Pendente'])
+                st.metric("Pendentes", pendentes)
+            
+            with col4:
+                tipos_unicos = df_movimentacoes['tipo_item'].nunique()
+                st.metric("Tipos Movimentados", tipos_unicos)
+            
+            st.divider()
+            
+            # Gráficos de movimentações
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig_timeline = reports_manager.create_movimentacoes_timeline(df_movimentacoes)
+                if fig_timeline:
+                    st.plotly_chart(fig_timeline, use_container_width=True)
+            
+            with col2:
+                fig_by_type = reports_manager.create_movimentacoes_by_type(df_movimentacoes)
+                if fig_by_type:
+                    st.plotly_chart(fig_by_type, use_container_width=True)
+            
+            # Tabela de movimentações
+            st.markdown("### 📋 Detalhes das Movimentações")
+            
+            columns_to_show = ['data_movimentacao', 'item_codigo', 'item_descricao', 'tipo_item', 
+                             'origem', 'destino', 'quantidade', 'responsavel', 'status']
+            
+            # Usar função segura para exibir DataFrame  
+            from utils.dataframe_utils import safe_dataframe
+            safe_dataframe(
+                df_movimentacoes[columns_to_show],
+                use_container_width=True,
+                height=400
+            )
+            
+            # Exportar movimentações
+            if st.button("📤 Exportar Movimentações"):
+                csv_movimentacoes = df_movimentacoes.to_csv(index=False)
+                
+                st.download_button(
+                    label="⬇️ Download Movimentações CSV",
+                    data=csv_movimentacoes,
+                    file_name=f"movimentacoes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
+                )
+        
+        else:
+            st.warning("⚠️ Nenhuma movimentação encontrada no período selecionado")
+    
+    with tab_analises:
+        st.markdown("### 📈 Análises Estatísticas")
+        
+        # Carregar dados
+        with st.spinner("📊 Preparando análises..."):
+            df_inventario = reports_manager.get_inventario_completo()
+            df_movimentacoes = reports_manager.get_movimentacoes_data(90)
+        
+        if not df_inventario.empty:
+            # Análises estatísticas
+            st.markdown("#### 📊 Estatísticas Descritivas")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Distribuição por Categoria:**")
+                if 'categoria' in df_inventario.columns:
+                    categoria_counts = df_inventario['categoria'].value_counts()
+                    for categoria, count in categoria_counts.head(10).items():
+                        st.text(f"• {categoria}: {count}")
+                
+            with col2:
+                st.markdown("**Distribuição por Localização:**")
+                if 'localizacao' in df_inventario.columns:
+                    loc_counts = df_inventario['localizacao'].value_counts()
+                    for loc, count in loc_counts.head(10).items():
+                        st.text(f"• {loc}: {count}")
+            
+            st.divider()
+            
+            # Análise de valores
+            if 'valor' in df_inventario.columns:
+                st.markdown("#### 💰 Análise Financeira")
+                
+                # Filtrar valores válidos
+                df_com_valor = df_inventario[df_inventario['valor'].notna() & (df_inventario['valor'] > 0)]
+                
+                if not df_com_valor.empty:
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        valor_total = df_com_valor['valor'].sum()
+                        st.metric("Valor Total", f"R$ {valor_total:,.2f}")
+                    
+                    with col2:
+                        valor_medio = df_com_valor['valor'].mean()
+                        st.metric("Valor Médio", f"R$ {valor_medio:,.2f}")
+                    
+                    with col3:
+                        valor_maximo = df_com_valor['valor'].max()
+                        st.metric("Maior Valor", f"R$ {valor_maximo:,.2f}")
+                    
+                    with col4:
+                        itens_com_valor = len(df_com_valor)
+                        st.metric("Itens Avaliados", itens_com_valor)
+                    
+                    # Histograma de valores
+                    fig_histogram = px.histogram(
+                        df_com_valor,
+                        x='valor',
+                        nbins=20,
+                        title="Distribuição dos Valores dos Itens",
+                        labels={'valor': 'Valor (R$)', 'count': 'Quantidade'}
+                    )
+                    
+                    fig_histogram.update_layout(height=400)
+                    st.plotly_chart(fig_histogram, use_container_width=True)
+                
+                else:
+                    st.info("ℹ️ Poucos itens têm valores registrados para análise financeira")
+            
+            st.divider()
+            
+            # Tendências de movimentação
+            if not df_movimentacoes.empty:
+                st.markdown("#### 📈 Tendências de Movimentação")
+                
+                # Converter data para análise
+                df_movimentacoes['data_movimentacao'] = pd.to_datetime(df_movimentacoes['data_movimentacao'])
+                
+                # Movimentações por semana
+                df_movimentacoes['semana'] = df_movimentacoes['data_movimentacao'].dt.to_period('W')
+                movimentacoes_semana = df_movimentacoes.groupby('semana').size()
+                
+                if len(movimentacoes_semana) > 1:
+                    fig_tendencia = px.line(
+                        x=movimentacoes_semana.index.astype(str),
+                        y=movimentacoes_semana.values,
+                        title="Tendência de Movimentações por Semana",
+                        labels={'x': 'Semana', 'y': 'Número de Movimentações'}
+                    )
+                    
+                    fig_tendencia.update_layout(height=400)
+                    st.plotly_chart(fig_tendencia, use_container_width=True)
+                
+                # Top itens mais movimentados
+                st.markdown("#### 🏆 Top Itens Mais Movimentados")
+                top_itens = df_movimentacoes['item_codigo'].value_counts().head(10)
+                
+                if not top_itens.empty:
+                    for i, (item, count) in enumerate(top_itens.items(), 1):
+                        item_desc = df_movimentacoes[df_movimentacoes['item_codigo'] == item]['item_descricao'].iloc[0]
+                        st.text(f"{i}. {item} - {item_desc}: {count} movimentações")
+            
+        else:
+            st.warning("⚠️ Dados insuficientes para análises estatísticas")
 
 if __name__ == "__main__":
-    from pages import relatorios
-    relatorios.show()
+    show()

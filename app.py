@@ -17,6 +17,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 from database.connection import init_database, get_database
 from utils.auth import get_auth
 from utils.backup import get_backup_manager
+from utils.themes import get_theme_manager
+from utils.feedback import get_feedback_manager, NotificationType
 
 # Configuração dinâmica da página
 # Verificar se usuário está logado para configurar sidebar
@@ -49,129 +51,36 @@ st.set_page_config(
     }
 )
 
-# CSS personalizado
-st.markdown("""
-<style>
-    /* Header personalizado */
-    .main-header {
-        font-size: 2.5rem;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 1rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    /* Sidebar customizada */
-    .css-1d391kg {
-        background-color: #f8f9fa;
-    }
-    
-    /* Melhorar espaçamento do sidebar */
-    .css-1v3fvcr {
-        padding-top: 1rem;
-    }
-    
-    /* Botão de sair no sidebar */
-    .stSidebar .stButton > button {
-        width: 100%;
-        margin-top: 0.5rem;
-        background-color: #dc3545;
-        color: white;
-    }
-    
-    /* Informações do usuário no sidebar */
-    .stSidebar .stMarkdown {
-        font-size: 0.9rem;
-    }
-    
-    /* Cards de métricas */
-    .metric-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-left: 4px solid #1f77b4;
-        margin-bottom: 1rem;
-    }
-    
-    /* Alertas customizados */
-    .custom-alert-success {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-        padding: 0.75rem 1.25rem;
-        border-radius: 0.25rem;
-        margin-bottom: 1rem;
-    }
-    
-    .custom-alert-warning {
-        background-color: #fff3cd;
-        border: 1px solid #ffeaa7;
-        color: #856404;
-        padding: 0.75rem 1.25rem;
-        border-radius: 0.25rem;
-        margin-bottom: 1rem;
-    }
-    
-    /* Botões personalizados */
-    .stButton > button {
-        border-radius: 20px;
-        border: none;
-        padding: 0.5rem 1rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-    
-    /* Footer */
-    .footer {
-        text-align: center;
-        padding: 2rem;
-        color: #666;
-        border-top: 1px solid #eee;
-        margin-top: 3rem;
-    }
-    
-    /* Login container */
-    .login-container {
-        max-width: 400px;
-        margin: 0 auto;
-        padding: 2rem;
-        background: #f8f9fa;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    
-    /* Ocultar sidebar quando não logado */
-    .css-1d391kg {
-        display: none !important;
-    }
-    
-    /* Mostrar sidebar apenas quando logado */
-    .user-logged-in .css-1d391kg {
-        display: block !important;
-    }
-    
-    /* Animações */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .fade-in {
-        animation: fadeIn 0.5s ease-in;
-    }
-</style>
-""", unsafe_allow_html=True)
+# CSS personalizado - Aplicar tema atual
+theme_manager = get_theme_manager()
+st.markdown(theme_manager.apply_theme_css(), unsafe_allow_html=True)
 
 def show_header():
     """Exibir header da aplicação"""
+    feedback_manager = get_feedback_manager()
+    
+    # Header principal com animação
     st.markdown('<h1 class="main-header fade-in">🏗️ Sistema de Inventário Web</h1>', 
                 unsafe_allow_html=True)
+    
+    # Exibir notificações
+    feedback_manager.show_notifications()
+    
+    # Adicionar breadcrumb de navegação se houver página selecionada
+    current_page = st.session_state.get('navigation_select', '🏠 Dashboard')
+    if current_page:
+        st.markdown(f"""
+        <div class="fade-in" style="
+            text-align: center; 
+            margin-bottom: 1.5rem;
+            padding: 0.5rem;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 25px;
+            border: 1px solid #dee2e6;
+        ">
+            <small style="color: #6c757d;">📍 Você está em: <strong>{current_page}</strong></small>
+        </div>
+        """, unsafe_allow_html=True)
 
 def show_user_info():
     """Exibir informações do usuário logado"""
@@ -184,11 +93,40 @@ def show_user_info():
         
         login_time = st.session_state.get('login_time')
         if login_time:
-            time_str = login_time.strftime("%H:%M")
-            st.markdown(f"**🕐 Login:** {time_str}")
+            # Calcular tempo de sessão
+            now = datetime.now()
+            session_duration = now - login_time
+            
+            # Timeout de 30 minutos
+            SESSION_TIMEOUT = 30 * 60  # em segundos
+            remaining_seconds = SESSION_TIMEOUT - session_duration.total_seconds()
+            
+            if remaining_seconds > 0:
+                remaining_minutes = int(remaining_seconds // 60)
+                remaining_secs = int(remaining_seconds % 60)
+                
+                # Cor baseada no tempo restante
+                if remaining_minutes < 5:
+                    color = "🔴"
+                elif remaining_minutes < 10:
+                    color = "🟡"
+                else:
+                    color = "🟢"
+                
+                st.markdown(f"**🕐 Login:** {login_time.strftime('%H:%M')}")
+                st.markdown(f"**⏱️ Sessão:** {color} {remaining_minutes:02d}:{remaining_secs:02d}")
+                
+                # Alerta quando restam menos de 5 minutos
+                if remaining_minutes < 5:
+                    st.warning(f"⚠️ Sessão expira em {remaining_minutes}min")
+            else:
+                st.error("🔴 Sessão expirada")
         
         # Botão de sair em linha separada
         if st.button("🚪 Sair", use_container_width=True, type="secondary"):
+            feedback_manager = get_feedback_manager()
+            feedback_manager.log_user_action("user_logout")
+            feedback_manager.show_notification("👋 Logout realizado com sucesso!", NotificationType.INFO)
             auth.logout_user()
             st.rerun()
 
@@ -211,6 +149,7 @@ def show_navigation():
         # Menu de navegação
         pages = {
             "🏠 Dashboard": "dashboard",
+            "🚨 Alertas": "alertas",
             "⚡ Equipamentos Elétricos": "equipamentos_eletricos", 
             "🔧 Equipamentos Manuais": "equipamentos_manuais",
             "📦 Insumos": "insumos",
@@ -220,12 +159,32 @@ def show_navigation():
             "⚙️ Configurações": "configuracoes"
         }
         
+        # Adicionar página de logs apenas para admins
+        if auth.has_permission('admin'):
+            pages["📋 Logs de Auditoria"] = "logs_auditoria"
+        
+        # Seletor de página com feedback
+        current_index = 0
+        if 'navigation_select' in st.session_state:
+            try:
+                current_page = st.session_state.navigation_select
+                if current_page in pages.keys():
+                    current_index = list(pages.keys()).index(current_page)
+            except:
+                pass
+        
         selected_page = st.selectbox(
             "Selecione uma seção:",
             list(pages.keys()),
-            index=0,
+            index=current_index,
             key="navigation_select"
         )
+        
+        # Log da navegação
+        if selected_page != st.session_state.get('last_page'):
+            feedback_manager = get_feedback_manager()
+            feedback_manager.log_user_action("navigate", {'page': selected_page})
+            st.session_state.last_page = selected_page
         
         st.divider()
         
@@ -265,6 +224,9 @@ def load_page(page_name: str):
         if page_name == "dashboard":
             from pages import dashboard
             dashboard.show()
+        elif page_name == "alertas":
+            from pages import alertas
+            alertas.show()
         elif page_name == "equipamentos_eletricos":
             from pages import equipamentos_eletricos
             equipamentos_eletricos.show()
@@ -286,6 +248,9 @@ def load_page(page_name: str):
         elif page_name == "configuracoes":
             from pages import configuracoes
             configuracoes.show()
+        elif page_name == "logs_auditoria":
+            from pages import logs_auditoria
+            logs_auditoria.show()
         else:
             st.error(f"❌ Página '{page_name}' não encontrada!")
             

@@ -175,7 +175,7 @@ class WebAuth:
     
     def login_user(self, username: str, password: str) -> bool:
         """
-        Fazer login do usuário
+        Fazer login do usuário com rate limiting
         
         Args:
             username: Nome de usuário
@@ -184,6 +184,14 @@ class WebAuth:
         Returns:
             True se login bem-sucedido, False caso contrário
         """
+        # Verificar rate limiting primeiro
+        from utils.rate_limiting import rate_limiter
+        
+        is_allowed, rate_message = rate_limiter.check_rate_limit()
+        if not is_allowed:
+            st.error(f"🚫 {rate_message}")
+            return False
+        
         user_data = self.authenticate_user(username, password)
         
         if user_data:
@@ -191,20 +199,42 @@ class WebAuth:
             st.session_state.user_data = user_data
             st.session_state.login_time = datetime.now()
             
+            # Registrar tentativa bem-sucedida (limpa rate limit)
+            rate_limiter.record_attempt(success=True)
+            
             # Log de auditoria
-            self.log_login_attempt(user_data['id'], True)
+            from utils.logging import log_action
+            log_action(
+                "login_success", 
+                f"Login bem-sucedido para usuário: {username}",
+                user_id=user_data['id']
+            )
             
             return True
         else:
+            # Registrar tentativa falhada
+            rate_limiter.record_attempt(success=False)
+            
             # Log de tentativa falhada
-            self.log_login_attempt(None, False, username)
+            from utils.logging import log_action
+            log_action(
+                "login_failed", 
+                f"Tentativa de login falhada para usuário: {username}"
+            )
             return False
     
     def logout_user(self):
-        """Fazer logout do usuário"""
+        """Fazer logout do usuário com novo sistema de logging"""
         if st.session_state.authenticated and st.session_state.user_data:
-            # Log de logout
-            self.log_logout(st.session_state.user_data['id'])
+            user = st.session_state.user_data
+            
+            # Log de logout com novo sistema
+            from utils.logging import log_action
+            log_action(
+                "logout", 
+                f"Logout do usuário: {user['usuario']}",
+                user_id=user['id']
+            )
         
         # Limpar sessão
         st.session_state.authenticated = False
@@ -218,12 +248,45 @@ class WebAuth:
     
     def is_authenticated(self) -> bool:
         """
-        Verificar se usuário está autenticado
+        Verificar se usuário está autenticado e sessão não expirou
         
         Returns:
-            True se autenticado, False caso contrário
+            True se autenticado e sessão válida, False caso contrário
         """
-        return st.session_state.get('authenticated', False)
+        if not st.session_state.get('authenticated', False) or not st.session_state.get('user_data'):
+            return False
+        
+        # Verificar timeout de sessão (30 minutos)
+        login_time = st.session_state.get('login_time')
+        if not login_time:
+            return False
+        
+        # Calcular tempo desde login
+        now = datetime.now()
+        time_diff = now - login_time
+        
+        # Timeout de 30 minutos
+        SESSION_TIMEOUT = timedelta(minutes=30)
+        
+        if time_diff > SESSION_TIMEOUT:
+            # Sessão expirou - fazer logout automático
+            user = st.session_state.get('user_data')  # Acessar diretamente para evitar recursão
+            if user:
+                from utils.logging import log_action
+                log_action(
+                    "session_timeout", 
+                    f"Sessão expirada para usuário: {user['usuario']} (duração: {time_diff})",
+                    user_id=user['id']
+                )
+            
+            # Limpar sessão
+            self.logout_user()
+            return False
+        
+        # Atualizar último acesso para atividade recente
+        st.session_state.last_activity = now
+        
+        return True
     
     def get_current_user(self) -> Optional[Dict[str, Any]]:
         """

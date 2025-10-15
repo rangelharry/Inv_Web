@@ -300,7 +300,7 @@ def get_equipment_by_code(codigo: str) -> Optional[Dict[str, Any]]:
         db.close()
 
 def add_equipment(equipment_data: Dict[str, Any]) -> bool:
-    """Adicionar novo equipamento"""
+    """Adicionar novo equipamento com logging"""
     db = DatabaseConnection()
     
     try:
@@ -320,17 +320,35 @@ def add_equipment(equipment_data: Dict[str, Any]) -> bool:
             equipment_data['observacoes']
         )
         
-        return db.execute_update(query, params)
+        success = db.execute_update(query, params)
+        
+        if success:
+            # Log da operação
+            from utils.logging import log_crud
+            log_crud(
+                'create', 
+                'equipamentos_eletricos', 
+                equipment_data['codigo'],
+                f"Equipamento elétrico criado: {equipment_data['nome']}",
+                new_data=equipment_data
+            )
+        
+        return success
         
     except Exception as e:
         st.error(f"Erro ao adicionar equipamento: {e}")
         return False
 
 def update_equipment(equipment_id: str, equipment_data: Dict[str, Any]) -> bool:
-    """Atualizar equipamento existente"""
+    """Atualizar equipamento existente com logging"""
     db = DatabaseConnection()
     
     try:
+        # Buscar dados antigos para log
+        old_data_query = "SELECT * FROM equipamentos_eletricos WHERE codigo = ?"
+        old_result = db.execute_query(old_data_query, (equipment_id,))
+        old_data = old_result[0] if old_result else None
+        
         query = """
             UPDATE equipamentos_eletricos SET
                 nome = ?, categoria = ?, status = ?,
@@ -347,18 +365,51 @@ def update_equipment(equipment_id: str, equipment_data: Dict[str, Any]) -> bool:
             equipment_id
         )
         
-        return db.execute_update(query, params)
+        success = db.execute_update(query, params)
+        
+        if success and old_data:
+            # Log da operação
+            from utils.logging import log_crud
+            log_crud(
+                'update', 
+                'equipamentos_eletricos', 
+                equipment_id,
+                f"Equipamento elétrico atualizado: {equipment_data['nome']}",
+                old_data=dict(old_data),
+                new_data=equipment_data
+            )
+        
+        return success
         
     except Exception as e:
         st.error(f"Erro ao atualizar equipamento: {e}")
         return False
 
 def delete_equipment(equipment_id: str) -> bool:
-    """Deletar equipamento"""
+    """Deletar equipamento com logging"""
     db = DatabaseConnection()
     
     try:
-        return db.execute_update("DELETE FROM equipamentos_eletricos WHERE codigo = ?", (equipment_id,))
+        # Buscar dados antes de deletar para log
+        old_data_query = "SELECT * FROM equipamentos_eletricos WHERE codigo = ?"
+        old_result = db.execute_query(old_data_query, (equipment_id,))
+        old_data = old_result[0] if old_result else None
+        
+        success = db.execute_update("DELETE FROM equipamentos_eletricos WHERE codigo = ?", (equipment_id,))
+        
+        if success and old_data:
+            # Log da operação
+            from utils.logging import log_crud
+            log_crud(
+                'delete', 
+                'equipamentos_eletricos', 
+                equipment_id,
+                f"Equipamento elétrico excluído: {old_data.get('nome', 'N/A')}",
+                old_data=dict(old_data)
+            )
+        
+        return success
+        
     except Exception as e:
         st.error(f"Erro ao deletar equipamento: {e}")
         return False

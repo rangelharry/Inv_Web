@@ -17,59 +17,69 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from database.connection import get_database
 from utils.auth import get_auth
+from utils.performance import get_cache_manager, cache_data, optimize_query_performance
+from utils.lazy_loading import get_lazy_loader, lazy_component, lazy_chart
+from utils.feedback import get_feedback_manager, NotificationType
 from typing import Dict, Any
 
+@cache_data(max_age=300, persist=True)  # Cache por 5 minutos
 def get_dashboard_metrics() -> Dict[str, Any]:
-    """Obter métricas para o dashboard"""
+    """Obter métricas para o dashboard com cache otimizado"""
     db = get_database()
     
     try:
-        # Contadores principais
-        equipamentos_result = db.execute_query("SELECT COUNT(*) as count FROM equipamentos")
-        equipamentos = equipamentos_result[0]['count'] if equipamentos_result else 0
+        # Contadores principais otimizados com uma query
+        main_counts = db.execute_query("""
+            SELECT 
+                (SELECT COUNT(*) FROM equipamentos_eletricos) as equipamentos_eletricos,
+                (SELECT COUNT(*) FROM equipamentos_manuais) as equipamentos_manuais,
+                (SELECT COUNT(*) FROM insumos) as insumos,
+                (SELECT COUNT(*) FROM obras) as obras
+        """)
         
-        equipamentos_manuais_result = db.execute_query("SELECT COUNT(*) as count FROM equipamentos_manuais")
-        equipamentos_manuais = equipamentos_manuais_result[0]['count'] if equipamentos_manuais_result else 0
+        if main_counts:
+            counts = main_counts[0]
+            equipamentos = counts.get('equipamentos_eletricos', 0)
+            equipamentos_manuais = counts.get('equipamentos_manuais', 0)
+            insumos = counts.get('insumos', 0)
+            obras = counts.get('obras', 0)
+        else:
+            equipamentos = equipamentos_manuais = insumos = obras = 0
         
-        insumos_result = db.execute_query("SELECT COUNT(*) as count FROM insumos")
-        insumos = insumos_result[0]['count'] if insumos_result else 0
+        # Status dos equipamentos com query otimizada
+        status_counts = db.execute_query("""
+            SELECT 
+                (SELECT COUNT(*) FROM equipamentos_eletricos WHERE status = 'Disponível') +
+                (SELECT COUNT(*) FROM equipamentos_manuais WHERE status = 'Disponível') as disponiveis,
+                (SELECT COUNT(*) FROM equipamentos_eletricos WHERE status = 'Em Uso') +
+                (SELECT COUNT(*) FROM equipamentos_manuais WHERE status = 'Em Uso') as em_uso
+        """)
         
-        obras_result = db.execute_query("SELECT COUNT(*) as count FROM obras")
-        obras = obras_result[0]['count'] if obras_result else 0
+        if status_counts:
+            equipamentos_disponiveis = status_counts[0].get('disponiveis', 0)
+            equipamentos_em_uso = status_counts[0].get('em_uso', 0)
+        else:
+            equipamentos_disponiveis = equipamentos_em_uso = 0
         
-        # Status dos equipamentos (combinando elétricos e manuais)
-        equipamentos_disponiveis_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos WHERE status = 'Disponível'"
-        )
-        equipamentos_disponiveis = equipamentos_disponiveis_result[0]['count'] if equipamentos_disponiveis_result else 0
-        
-        # Adicionar equipamentos manuais disponíveis
-        equipamentos_manuais_disponiveis_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos_manuais WHERE status = 'Disponível'"
-        )
-        equipamentos_disponiveis += equipamentos_manuais_disponiveis_result[0]['count'] if equipamentos_manuais_disponiveis_result else 0
-        
-        equipamentos_em_uso_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos WHERE status = 'Em Uso'"
-        )
+        # Contar equipamentos em uso - eletricos e manuais
+        equipamentos_em_uso_result = db.execute_query("""
+            SELECT COUNT(*) as count FROM (
+                SELECT * FROM equipamentos_eletricos WHERE status = 'Em Uso'
+                UNION ALL
+                SELECT * FROM equipamentos_manuais WHERE status = 'Em Uso'
+            )
+        """)
         equipamentos_em_uso = equipamentos_em_uso_result[0]['count'] if equipamentos_em_uso_result else 0
         
-        # Adicionar equipamentos manuais em uso
-        equipamentos_manuais_em_uso_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos WHERE categoria NOT LIKE '%Elétrica%' AND status = 'Em Uso'"
-        )
-        equipamentos_em_uso += equipamentos_manuais_em_uso_result[0]['count'] if equipamentos_manuais_em_uso_result else 0
-        
-        equipamentos_manutencao_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos WHERE status = 'Manutenção'"
-        )
+        # Contar equipamentos em manutenção - eletricos e manuais  
+        equipamentos_manutencao_result = db.execute_query("""
+            SELECT COUNT(*) as count FROM (
+                SELECT * FROM equipamentos_eletricos WHERE status = 'Manutenção'
+                UNION ALL
+                SELECT * FROM equipamentos_manuais WHERE status = 'Manutenção'
+            )
+        """)
         equipamentos_manutencao = equipamentos_manutencao_result[0]['count'] if equipamentos_manutencao_result else 0
-        
-        # Adicionar equipamentos manuais em manutenção
-        equipamentos_manuais_manutencao_result = db.execute_query(
-            "SELECT COUNT(*) as count FROM equipamentos WHERE categoria NOT LIKE '%Elétrica%' AND status = 'Manutenção'"
-        )
-        equipamentos_manutencao += equipamentos_manuais_manutencao_result[0]['count'] if equipamentos_manuais_manutencao_result else 0
         
         # Insumos com estoque baixo
         insumos_baixo_estoque_result = db.execute_query("""
@@ -224,52 +234,41 @@ def show_status_chart(metrics: Dict[str, Any]) -> None:
             )
 
 def show_alerts(metrics: Dict[str, Any]) -> None:
-    """Exibir alertas e notificações"""
-    st.markdown("### 🚨 Alertas do Sistema")
-    
-    alerts = []
-    
-    # Alerta de estoque baixo
-    if metrics.get('insumos_baixo_estoque', 0) > 0:
-        alerts.append({
-            'tipo': 'warning',
-            'titulo': '📦 Estoque Baixo',
-            'mensagem': f"{metrics.get('insumos_baixo_estoque', 0)} insumos com estoque abaixo do mínimo",
-            'acao': 'Ver Insumos'
-        })
-    
-    # Alerta de equipamentos em manutenção
-    if metrics.get('equipamentos_manutencao', 0) > 0:
-        alerts.append({
-            'tipo': 'info',
-            'titulo': '🔧 Manutenção Pendente',
-            'mensagem': f"{metrics.get('equipamentos_manutencao', 0)} equipamentos em manutenção",
-            'acao': 'Ver Equipamentos'
-        })
-    
-    # Alerta de alta utilização
-    total_equipamentos = metrics.get('equipamentos_disponiveis', 0) + metrics.get('equipamentos_em_uso', 0)
-    if total_equipamentos > 0:
-        taxa_uso = (metrics.get('equipamentos_em_uso', 0) / total_equipamentos) * 100
-        if taxa_uso > 70:
+    """Exibir alertas e notificações integrados com o sistema de alertas"""
+    try:
+        from utils.alerts import alert_system
+        alert_system.show_alerts_widget()
+    except Exception as e:
+        # Fallback para alertas básicos se o sistema de alertas não estiver disponível
+        st.markdown("### 🚨 Alertas do Sistema")
+        
+        alerts = []
+        
+        # Alerta de estoque baixo
+        if metrics.get('insumos_baixo_estoque', 0) > 0:
             alerts.append({
                 'tipo': 'warning',
-                'titulo': '⚡ Alta Utilização',
-                'mensagem': f"{taxa_uso:.0f}% dos equipamentos estão em uso",
-                'acao': 'Monitorar'
+                'titulo': '📦 Estoque Baixo',
+                'mensagem': f"{metrics.get('insumos_baixo_estoque', 0)} insumos com estoque abaixo do mínimo"
             })
-    
-    # Exibir alertas
-    if alerts:
-        for alert in alerts:
-            if alert['tipo'] == 'warning':
-                st.warning(f"**{alert['titulo']}:** {alert['mensagem']}")
-            elif alert['tipo'] == 'info':
-                st.info(f"**{alert['titulo']}:** {alert['mensagem']}")
-            else:
-                st.success(f"**{alert['titulo']}:** {alert['mensagem']}")
-    else:
-        st.success("✅ **Sistema OK:** Nenhum alerta no momento")
+        
+        # Alerta de equipamentos em manutenção
+        if metrics.get('equipamentos_manutencao', 0) > 0:
+            alerts.append({
+                'tipo': 'info',
+                'titulo': '🔧 Manutenção Pendente',
+                'mensagem': f"{metrics.get('equipamentos_manutencao', 0)} equipamentos em manutenção"
+            })
+        
+        # Exibir alertas
+        if alerts:
+            for alert in alerts:
+                if alert['tipo'] == 'warning':
+                    st.warning(f"**{alert['titulo']}:** {alert['mensagem']}")
+                else:
+                    st.info(f"**{alert['titulo']}:** {alert['mensagem']}")
+        else:
+            st.success("✅ **Sistema OK:** Nenhum alerta no momento")
 
 def show_recent_activity() -> None:
     """Exibir atividades recentes"""
@@ -359,44 +358,95 @@ def show_quick_actions() -> None:
             st.switch_page("pages/relatorios.py")
 
 def show():
-    """Função principal da página Dashboard"""
+    """Função principal da página Dashboard com otimizações de performance"""
     
     # Verificar autenticação
     auth = get_auth()
     auth.require_auth()
     
+    # Inicializar otimizações de performance
+    optimize_query_performance()
+    
     # Header da página
     user = auth.get_current_user()
     user_name = user['nome'] if user and 'nome' in user else 'Usuário'
-    st.markdown(f"## 🏠 Dashboard - Bem-vindo, {user_name}!")
+    
+    # Header com animação
+    st.markdown(f"""
+    <div class="fade-in">
+        <h2>🏠 Dashboard - Bem-vindo, {user_name}!</h2>
+        <p style="color: #6c757d; margin-top: 0.5rem;">
+            📅 {datetime.now().strftime('%d/%m/%Y')} • 🕐 {datetime.now().strftime('%H:%M')}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Carregar métricas
-    with st.spinner("📊 Carregando dados do dashboard..."):
-        metrics = get_dashboard_metrics()
+    # Feedback manager
+    feedback_manager = get_feedback_manager()
+    feedback_manager.log_user_action("dashboard_access")
+    
+    # Carregar métricas com lazy loading
+    def load_metrics():
+        return get_dashboard_metrics()
+    
+    metrics = lazy_component(
+        "dashboard_metrics",
+        load_metrics,
+        placeholder_text="📊 Carregando métricas do dashboard...",
+        cache_duration=300  # 5 minutos
+    )
     
     if not metrics:
         st.error("❌ Erro ao carregar dados do dashboard")
         return
     
-    # Exibir componentes do dashboard
-    show_metrics_cards(metrics)
+    # Exibir componentes do dashboard com lazy loading
+    def load_metrics_cards():
+        show_metrics_cards(metrics)
+        return "metrics_loaded"
+    
+    lazy_component("metrics_cards", load_metrics_cards, placeholder_text="📊 Carregando cartões de métricas...")
     
     st.markdown("---")
     
-    # Gráficos e alertas
+    # Gráficos e alertas com lazy loading
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        show_status_chart(metrics)
+        def load_status_chart():
+            show_status_chart(metrics)
+            return "chart_loaded"
+        
+        lazy_component("status_chart", load_status_chart, placeholder_text="📈 Gerando gráficos...")
     
     with col2:
-        show_alerts(metrics)
+        def load_alerts():
+            show_alerts(metrics)
+            return "alerts_loaded"
+        
+        lazy_component("alerts_panel", load_alerts, placeholder_text="🚨 Carregando alertas...")
     
     st.markdown("---")
     
-    # Atividades recentes
+    # Performance stats (apenas para admins)
+    if auth.has_permission('admin'):
+        with st.expander("⚡ Estatísticas de Performance"):
+            from utils.performance import show_cache_stats
+            from utils.lazy_loading import show_lazy_loading_stats
+            
+            col_perf1, col_perf2 = st.columns(2)
+            
+            with col_perf1:
+                st.markdown("### 💾 Cache")
+                show_cache_stats()
+            
+            with col_perf2:
+                st.markdown("### 📊 Lazy Loading")
+                show_lazy_loading_stats()
+    
+    # Atividades recentes com lazy loading
     show_recent_activity()
     
     st.markdown("---")
