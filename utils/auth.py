@@ -251,15 +251,13 @@ class WebAuth:
             with st.form("login_form", clear_on_submit=False):
                 username = st.text_input(
                     "👤 Usuário",
-                    placeholder="Digite seu nome de usuário", 
-                    help="Use: admin ou cinthia"
+                    placeholder="Digite seu nome de usuário"
                 )
                 
                 password = st.text_input(
                     "🔒 Senha",
                     type="password",
-                    placeholder="Digite sua senha",
-                    help="Senha definida no sistema"
+                    placeholder="Digite sua senha"
                 )
                 
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -296,7 +294,7 @@ class WebAuth:
                 # Modo demonstração
                 if demo_button:
                     with st.spinner("🎯 Ativando modo demonstração..."):
-                        if self.login_user("admin", "admin123"):
+                        if self.login_user("admin", "321nimda"):
                             st.success("✅ Modo demonstração ativado!")
                             st.info("👋 Bem-vindo ao modo demo!")
                             st.rerun()
@@ -306,16 +304,9 @@ class WebAuth:
         # Informações do sistema
         st.markdown("---")
         
-        col_info1, col_info2, col_info3 = st.columns(3)
+        col_info1, col_info2 = st.columns(2)
         
         with col_info1:
-            st.info("""
-            **👥 Usuários de Teste:**
-            - admin / admin123
-            - cinthia / cinthia123
-            """)
-        
-        with col_info2:
             st.info("""
             **🌐 Sistema Web:**
             - Acesso simultâneo
@@ -323,7 +314,7 @@ class WebAuth:
             - Interface responsiva
             """)
         
-        with col_info3:
+        with col_info2:
             st.info("""
             **🔒 Segurança:**
             - Senhas criptografadas

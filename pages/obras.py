@@ -234,65 +234,103 @@ def show():
                     
                     with col4:
                         # Botões de ação
-                        if st.button("✏️", key=f"edit_obra_{row['id']}", help="Editar"):
-                            st.session_state[f'edit_obra_{row["id"]}'] = row.to_dict()
-                            st.rerun()
+                        col_edit, col_delete = st.columns(2)
                         
-                        if st.button("🗑️", key=f"delete_obra_{row['id']}", help="Excluir", type="secondary"):
-                            if st.session_state.get(f'confirm_delete_obra_{row["id"]}') != row['id']:
-                                st.session_state[f'confirm_delete_obra_{row["id"]}'] = row['id']
-                                st.warning("⚠️ Clique novamente para confirmar")
-                            else:
-                                if excluir_obra(row['id']):
-                                    st.success("✅ Obra/Departamento excluído!")
-                                    del st.session_state[f'confirm_delete_obra_{row["id"]}']
-                                    st.rerun()
+                        with col_edit:
+                            if st.button("✏️ Editar", key=f"edit_obra_{row['id']}", help="Editar obra/departamento", use_container_width=True):
+                                st.session_state[f'edit_obra_{row["id"]}'] = row.to_dict()
+                                st.rerun()
+                        
+                        with col_delete:
+                            if st.button("🗑️ Excluir", key=f"delete_obra_{row['id']}", help="Excluir obra/departamento", 
+                                       type="secondary", use_container_width=True):
+                                if st.session_state.get(f'confirm_delete_obra_{row["id"]}') != row['id']:
+                                    st.session_state[f'confirm_delete_obra_{row["id"]}'] = row['id']
+                                    st.warning("⚠️ Clique novamente para confirmar exclusão")
                                 else:
-                                    st.error("❌ Erro ao excluir!")
+                                    if excluir_obra(row['id']):
+                                        st.success("✅ Obra/Departamento excluído com sucesso!")
+                                        del st.session_state[f'confirm_delete_obra_{row["id"]}']
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Erro ao excluir obra/departamento!")
                     
                     # Formulário de edição
                     if st.session_state.get(f'edit_obra_{row["id"]}'):
-                        with st.form(f"edit_form_{row['id']}"):
-                            st.markdown(f"#### ✏️ Editar: {row['nome']}")
+                        st.markdown("---")
+                        with st.container():
+                            st.markdown(f"### ✏️ Editando: {row['nome']}")
                             
-                            col_a, col_b = st.columns(2)
-                            
-                            with col_a:
-                                nome_edit = st.text_input("Nome *", value=row['nome'])
-                                descricao_edit = st.text_area("Descrição *", value=row['descricao'])
-                                responsavel_edit = st.text_input("Responsável *", value=row['responsavel'])
-                            
-                            with col_b:
-                                status_edit = st.selectbox("Status *", ["ativa", "pausada", "concluida", "cancelada"], 
-                                                         index=["ativa", "pausada", "concluida", "cancelada"].index(row['status']))
-                                data_inicio_edit = st.date_input("Data Início *", 
-                                                                value=pd.to_datetime(row['data_inicio']).date() if row['data_inicio'] else None)
-                                data_termino_edit = st.date_input("Data Término *", 
-                                                                 value=pd.to_datetime(row['data_termino']).date() if row['data_termino'] else None)
-                            
-                            col_save, col_cancel = st.columns(2)
-                            
-                            with col_save:
-                                save_edit = st.form_submit_button("💾 Salvar", type="primary")
-                            
-                            with col_cancel:
-                                cancel_edit = st.form_submit_button("❌ Cancelar")
-                            
-                            if save_edit and nome_edit and descricao_edit and responsavel_edit:
-                                success = atualizar_obra(row['id'], nome_edit, descricao_edit, status_edit, 
-                                                       data_inicio_edit, data_termino_edit, responsavel_edit)
-                                if success:
-                                    st.success("✅ Obra/Departamento atualizado!")
+                            with st.form(f"edit_form_{row['id']}"):
+                                col_a, col_b = st.columns(2)
+                                
+                                with col_a:
+                                    nome_edit = st.text_input("📌 Nome da Obra/Departamento *", 
+                                                            value=row['nome'],
+                                                            help="Nome identificador da obra ou departamento")
+                                    descricao_edit = st.text_area("📝 Descrição *", 
+                                                                 value=row['descricao'],
+                                                                 height=100,
+                                                                 help="Descrição detalhada do projeto ou função")
+                                    responsavel_edit = st.text_input("👤 Responsável *", 
+                                                                    value=row['responsavel'],
+                                                                    help="Nome do responsável principal")
+                                
+                                with col_b:
+                                    status_options = ["ativa", "pausada", "concluida", "cancelada"]
+                                    status_edit = st.selectbox("📊 Status *", status_options, 
+                                                             index=status_options.index(row['status']),
+                                                             help="Status atual da obra/departamento")
+                                    
+                                    try:
+                                        data_inicio_atual = pd.to_datetime(row['data_inicio']).date() if row['data_inicio'] else None
+                                    except:
+                                        data_inicio_atual = None
+                                    
+                                    try:
+                                        data_termino_atual = pd.to_datetime(row['data_termino']).date() if row['data_termino'] else None
+                                    except:
+                                        data_termino_atual = None
+                                    
+                                    data_inicio_edit = st.date_input("📅 Data de Início *", 
+                                                                    value=data_inicio_atual,
+                                                                    help="Data de início do projeto")
+                                    data_termino_edit = st.date_input("🏁 Data de Término *", 
+                                                                     value=data_termino_atual,
+                                                                     help="Data prevista para conclusão")
+                                
+                                # Validação de datas
+                                data_valida = True
+                                if data_inicio_edit and data_termino_edit and data_inicio_edit > data_termino_edit:
+                                    st.error("❌ A data de início não pode ser posterior à data de término!")
+                                    data_valida = False
+                                
+                                col_save, col_cancel = st.columns(2)
+                                
+                                with col_save:
+                                    save_edit = st.form_submit_button("💾 Salvar Alterações", type="primary", use_container_width=True)
+                                
+                                with col_cancel:
+                                    cancel_edit = st.form_submit_button("❌ Cancelar Edição", use_container_width=True)
+                                
+                                if save_edit:
+                                    if not (nome_edit and descricao_edit and responsavel_edit and data_inicio_edit and data_termino_edit):
+                                        st.error("❌ Todos os campos obrigatórios devem ser preenchidos!")
+                                    elif not data_valida:
+                                        st.error("❌ Corrija os erros de validação antes de salvar!")
+                                    else:
+                                        success = atualizar_obra(row['id'], nome_edit, descricao_edit, status_edit, 
+                                                               data_inicio_edit, data_termino_edit, responsavel_edit)
+                                        if success:
+                                            st.success("✅ Obra/Departamento atualizado com sucesso!")
+                                            del st.session_state[f'edit_obra_{row["id"]}']
+                                            st.rerun()
+                                        else:
+                                            st.error("❌ Erro ao atualizar obra/departamento!")
+                                
+                                if cancel_edit:
                                     del st.session_state[f'edit_obra_{row["id"]}']
                                     st.rerun()
-                                else:
-                                    st.error("❌ Erro ao atualizar!")
-                            elif save_edit:
-                                st.error("❌ Preencha todos os campos obrigatórios!")
-                            
-                            if cancel_edit:
-                                del st.session_state[f'edit_obra_{row["id"]}']
-                                st.rerun()
                     
                     st.markdown("---")
         else:

@@ -5,6 +5,9 @@ Sistema de Inventário Web - Equipamentos Elétricos
 Página para gestão completa de equipamentos elétricos
 """
 
+from typing import Optional, Dict, Any, List
+import pandas as pd
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -28,8 +31,8 @@ def get_equipamentos_data():
     try:
         query = """
             SELECT 
-                codigo, descricao, categoria, status,
-                localizacao, responsavel, data_entrada, observacoes
+                codigo, nome, categoria, status,
+                localizacao, observacoes, marca, modelo, valor_compra
             FROM equipamentos_eletricos
             ORDER BY codigo
         """
@@ -86,7 +89,7 @@ def show_equipment_filters():
     
     return search_term, status_filter, category_filter, location_filter
 
-def apply_filters(df, search_term, status_filter, category_filter, location_filter):
+def apply_filters(df: pd.DataFrame, search_term: str, status_filter: str, category_filter: str, location_filter: str) -> pd.DataFrame:
     """Aplicar filtros ao DataFrame"""
     if df.empty:
         return df
@@ -95,7 +98,7 @@ def apply_filters(df, search_term, status_filter, category_filter, location_filt
     if search_term:
         mask = (
             df['codigo'].str.contains(search_term, case=False, na=False) |
-            df['descricao'].str.contains(search_term, case=False, na=False)
+            df['nome'].str.contains(search_term, case=False, na=False)
         )
         df = df[mask]
     
@@ -113,7 +116,7 @@ def apply_filters(df, search_term, status_filter, category_filter, location_filt
     
     return df
 
-def show_equipment_form(equipment_data=None, edit_mode=False):
+def show_equipment_form(equipment_data: Optional[Dict[str, Any]] = None, edit_mode: bool = False) -> None:
     """Exibir formulário para adicionar/editar equipamento"""
     
     form_title = "✏️ Editar Equipamento" if edit_mode else "➕ Novo Equipamento"
@@ -131,11 +134,11 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
                 disabled=edit_mode  # Não permitir editar código
             )
             
-            descricao = st.text_area(
-                "Descrição *",
-                value=equipment_data.get('descricao', '') if equipment_data else '',
+            nome = st.text_area(
+                "Nome/Descrição *",
+                value=equipment_data.get('nome', '') if equipment_data else '',
                 height=100,
-                help="Descrição detalhada do equipamento"
+                help="Nome/Descrição detalhada do equipamento"
             )
             
             categoria = st.selectbox(
@@ -155,11 +158,6 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
                 "Localização *",
                 get_locations(),
                 index=get_locations().index(equipment_data.get('localizacao', 'Não Definido')) if equipment_data and equipment_data.get('localizacao') in get_locations() else len(get_locations())-1
-            )
-            
-            responsavel = st.text_input(
-                "Responsável",
-                value=equipment_data.get('responsavel', '') if equipment_data else ''
             )
         
         observacoes = st.text_area(
@@ -191,18 +189,17 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
         
         if submit_button:
             # Validações
-            if not codigo or not descricao or not categoria or not status or not localizacao:
+            if not codigo or not nome or not categoria or not status or not localizacao:
                 st.error("❌ Preencha todos os campos obrigatórios (marcados com *)")
                 return
             
             # Preparar dados
             equipment_data_to_save = {
                 'codigo': codigo,
-                'descricao': descricao,
+                'nome': nome,
                 'categoria': categoria,
                 'status': status,
                 'localizacao': localizacao,
-                'responsavel': responsavel,
                 'observacoes': observacoes
             }
             
@@ -224,26 +221,24 @@ def show_equipment_form(equipment_data=None, edit_mode=False):
                 else:
                     st.error("❌ Erro ao adicionar equipamento!")
 
-def add_equipment(equipment_data):
+def add_equipment(equipment_data: Dict[str, Any]) -> bool:
     """Adicionar novo equipamento"""
     db = DatabaseConnection()
     
     try:
         query = """
             INSERT INTO equipamentos_eletricos (
-                codigo, descricao, categoria, status,
-                localizacao, responsavel, data_entrada, observacoes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                codigo, nome, categoria, status,
+                localizacao, observacoes
+            ) VALUES (?, ?, ?, ?, ?, ?)
         """
         
         params = (
             equipment_data['codigo'],
-            equipment_data['descricao'],
+            equipment_data['nome'],
             equipment_data['categoria'],
             equipment_data['status'],
             equipment_data['localizacao'],
-            equipment_data['responsavel'],
-            datetime.now().strftime('%d/%m/%Y'),
             equipment_data['observacoes']
         )
         
@@ -253,24 +248,23 @@ def add_equipment(equipment_data):
         st.error(f"Erro ao adicionar equipamento: {e}")
         return False
 
-def update_equipment(equipment_id, equipment_data):
+def update_equipment(equipment_id: str, equipment_data: Dict[str, Any]) -> bool:
     """Atualizar equipamento existente"""
     db = DatabaseConnection()
     
     try:
         query = """
             UPDATE equipamentos_eletricos SET
-                descricao = ?, categoria = ?, status = ?,
-                localizacao = ?, responsavel = ?, observacoes = ?
+                nome = ?, categoria = ?, status = ?,
+                localizacao = ?, observacoes = ?
             WHERE codigo = ?
         """
         
         params = (
-            equipment_data['descricao'],
+            equipment_data['nome'],
             equipment_data['categoria'],
             equipment_data['status'],
             equipment_data['localizacao'],
-            equipment_data['responsavel'],
             equipment_data['observacoes'],
             equipment_id
         )
@@ -281,7 +275,7 @@ def update_equipment(equipment_id, equipment_data):
         st.error(f"Erro ao atualizar equipamento: {e}")
         return False
 
-def delete_equipment(equipment_id):
+def delete_equipment(equipment_id: str) -> bool:
     """Deletar equipamento"""
     db = DatabaseConnection()
     
@@ -291,7 +285,7 @@ def delete_equipment(equipment_id):
         st.error(f"Erro ao deletar equipamento: {e}")
         return False
 
-def show_equipment_table(df):
+def show_equipment_table(df: pd.DataFrame) -> None:
     """Exibir tabela de equipamentos"""
     if df.empty:
         st.info("📭 Nenhum equipamento encontrado com os filtros aplicados")
@@ -302,15 +296,13 @@ def show_equipment_table(df):
     
     # Formatar dados para melhor visualização
     df_display['Código'] = df['codigo']
-    df_display['Descrição'] = df['descricao'].str[:50] + '...' if len(df) > 0 and len(df['descricao'].iloc[0]) > 50 else df['descricao']
+    df_display['Descrição'] = df['nome'].str[:50] + '...' if len(df) > 0 and len(df['nome'].iloc[0]) > 50 else df['nome']
     df_display['Categoria'] = df['categoria']
     df_display['Status'] = df['status']
     df_display['Localização'] = df['localizacao']
-    df_display['Responsável'] = df['responsavel']
-    df_display['Responsável'] = df['responsavel']
     
     # Colunas a exibir
-    columns_to_show = ['Código', 'Descrição', 'Categoria', 'Status', 'Localização', 'Responsável']
+    columns_to_show = ['Código', 'Descrição', 'Categoria', 'Status', 'Localização']
     
     # Criar colunas para tabela e ações
     col_table, col_actions = st.columns([4, 1])
@@ -334,8 +326,7 @@ def show_equipment_table(df):
                         st.caption(f"� {row['Categoria']}")
                     
                     with col3:
-                        st.caption(f"�👤 {row['Responsável']}")
-                        st.caption(f"📅 {row.get('data_entrada', 'N/A')}")
+                        st.caption(f" {row.get('data_entrada', 'N/A')}")
                     
                     with col4:
                         # Botão de movimentação rápida
@@ -408,7 +399,7 @@ def show_equipment_table(df):
             selected_equipment = st.selectbox(
                 "Selecionar:",
                 options=range(len(df)),
-                format_func=lambda x: f"{df.iloc[x]['codigo']} - {df.iloc[x]['descricao'][:20]}...",
+                format_func=lambda x: f"{df.iloc[x]['codigo']} - {df.iloc[x]['nome'][:20]}...",
                 key="equipment_selector"
             )
             

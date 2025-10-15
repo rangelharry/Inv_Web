@@ -7,8 +7,7 @@ Página inicial com métricas, gráficos e informações gerais
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import plotly.express as px  # type: ignore
 from datetime import datetime, timedelta
 import sys
 import os
@@ -18,8 +17,9 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from database.connection import get_database
 from utils.auth import get_auth
+from typing import Dict, Any
 
-def get_dashboard_metrics():
+def get_dashboard_metrics() -> Dict[str, Any]:
     """Obter métricas para o dashboard"""
     db = get_database()
     
@@ -110,7 +110,7 @@ def get_dashboard_metrics():
         st.error(f"Erro ao carregar métricas: {e}")
         return {}
 
-def show_metrics_cards(metrics):
+def show_metrics_cards(metrics: Dict[str, Any]) -> None:
     """Exibir cards com métricas principais"""
     st.markdown("### 📊 Visão Geral do Inventário")
     
@@ -151,7 +151,7 @@ def show_metrics_cards(metrics):
             help="Valor total dos insumos em estoque"
         )
 
-def show_status_chart(metrics):
+def show_status_chart(metrics: Dict[str, Any]) -> None:
     """Exibir gráfico de status dos equipamentos"""
     st.markdown("### 📈 Status dos Equipamentos")
     
@@ -223,7 +223,7 @@ def show_status_chart(metrics):
                 delta_color="normal" if taxa_disponibilidade >= 80 else "inverse"
             )
 
-def show_alerts(metrics):
+def show_alerts(metrics: Dict[str, Any]) -> None:
     """Exibir alertas e notificações"""
     st.markdown("### 🚨 Alertas do Sistema")
     
@@ -271,7 +271,7 @@ def show_alerts(metrics):
     else:
         st.success("✅ **Sistema OK:** Nenhum alerta no momento")
 
-def show_recent_activity():
+def show_recent_activity() -> None:
     """Exibir atividades recentes"""
     st.markdown("### 📋 Atividades Recentes")
     
@@ -314,7 +314,7 @@ def show_recent_activity():
             # Exibir movimentações usando containers HTML
             st.markdown("**Movimentações Recentes:**")
             
-            for idx, row in df_display.head(5).iterrows():
+            for _, row in df_display.head(5).iterrows():
                 with st.container():
                     col1, col2, col3 = st.columns([2, 2, 1])
                     
@@ -336,7 +336,7 @@ def show_recent_activity():
     except Exception as e:
         st.error(f"Erro ao carregar atividades: {e}")
 
-def show_quick_actions():
+def show_quick_actions() -> None:
     """Exibir botões de ações rápidas"""
     st.markdown("### ⚡ Ações Rápidas")
     
@@ -367,7 +367,8 @@ def show():
     
     # Header da página
     user = auth.get_current_user()
-    st.markdown(f"## 🏠 Dashboard - Bem-vindo, {user['nome']}!")
+    user_name = user['nome'] if user and 'nome' in user else 'Usuário'
+    st.markdown(f"## 🏠 Dashboard - Bem-vindo, {user_name}!")
     
     st.markdown("---")
     

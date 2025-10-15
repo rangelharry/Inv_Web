@@ -20,7 +20,7 @@ import hashlib
 if not check_authentication():
     st.stop()
 
-def hash_password(password):
+def hash_password(password: str) -> str:
     """Cria hash da senha"""
     return hashlib.sha256(password.encode()).hexdigest()
 
@@ -73,10 +73,6 @@ def show_change_password_form():
                         st.success("✅ Senha alterada com sucesso!")
                     else:
                         st.error("❌ Erro ao alterar senha")
-                else:
-                    st.error("⚠️ Senha atual incorreta")
-                    st.success("✅ Senha alterada com sucesso!")
-                    st.rerun()
                 else:
                     st.error("⚠️ Senha atual incorreta")
             else:

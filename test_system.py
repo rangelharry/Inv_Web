@@ -184,7 +184,7 @@ def main():
     if all_passed:
         print("🎉 TODOS OS TESTES PASSARAM! Sistema pronto para uso.")
         print(f"🌐 URL do sistema: http://localhost:8509")
-        print("👤 Login: admin / admin123 ou cinthia / cinthia123")
+        print("👤 Login: admin / [senha configurada]")
     else:
         print("⚠️  ALGUNS TESTES FALHARAM. Verificar problemas acima.")
     

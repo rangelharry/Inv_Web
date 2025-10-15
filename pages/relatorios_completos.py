@@ -28,19 +28,19 @@ def get_inventario_completo():
     try:
         # Equipamentos elétricos
         query_eletricos = """
-            SELECT 'Elétrico' as tipo, codigo, descricao, categoria, status, localizacao
-            FROM equipamentos
+            SELECT 'Elétrico' as tipo, codigo, nome as descricao, categoria, status, localizacao
+            FROM equipamentos_eletricos
         """
         
         # Equipamentos manuais
         query_manuais = """
-            SELECT 'Manual' as tipo, codigo, descricao, tipo as categoria, status, localizacao
+            SELECT 'Manual' as tipo, codigo, nome as descricao, tipo as categoria, status, localizacao
             FROM equipamentos_manuais
         """
         
         # Insumos
         query_insumos = """
-            SELECT 'Insumo' as tipo, codigo, descricao, categoria, 
+            SELECT 'Insumo' as tipo, codigo, nome as descricao, categoria, 
                    CASE WHEN quantidade <= quantidade_minima THEN 'Estoque Baixo' ELSE 'OK' END as status,
                    localizacao
             FROM insumos
@@ -92,7 +92,7 @@ def get_status_equipamentos():
         # Status equipamentos elétricos
         query_eletricos = """
             SELECT status, COUNT(*) as quantidade, 'Elétrico' as tipo
-            FROM equipamentos
+            FROM equipamentos_eletricos
             GROUP BY status
         """
         
@@ -356,7 +356,7 @@ def show():
             if not df_inventario.empty:
                 tipos = df_inventario['tipo'].value_counts()
                 for tipo, count in tipos.items():
-                    tipo_emoji = {"Elétrico": "⚡", "Manual": "🔧", "Insumo": "📦"}.get(tipo, "📋")
+                    tipo_emoji = {"Elétrico": "⚡", "Manual": "🔧", "Insumo": "📦"}.get(str(tipo), "📋")
                     st.markdown(f"{tipo_emoji} **{tipo}:** {count} itens")
         
         with col2:

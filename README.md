@@ -1,300 +1,282 @@
-# 🌐 Sistema de Inventário Web
+# 🏗️ Sistema de Inventário Web v2.0
 
-## 📋 Visão Geral
+Sistema completo de gestão de inventário para obras e empresas, desenvolvido em Python com Streamlit.
 
-Versão web multiusuário do Sistema de Inventário, desenvolvida com **Streamlit** para acesso online gratuito.
+## 🚀 Instalação Rápida (Nova Máquina)
 
-### ✨ Características
+### Pré-requisitos
+- **Windows 10/11**
+- **Python 3.11+** ([Download aqui](https://www.python.org/downloads/))
+  - ⚠️ **IMPORTANTE**: Marcar "Add Python to PATH" durante a instalação
 
-- 🌐 **Acesso Web**: Interface moderna acessível via navegador
-- 👥 **Multiusuário**: Múltiplos usuários simultâneos
-- 🔒 **Seguro**: Sistema de login e sessões
-- 📱 **Responsivo**: Funciona em desktop, tablet e mobile
-- 🆓 **Gratuito**: Hospedagem gratuita no Streamlit Cloud
-- ⚡ **Rápido**: Interface reativa em tempo real
+### Instalação Automática
+
+1. **Baixe o projeto** ou clone o repositório
+2. **Execute o instalador** como Administrador:
+   ```batch
+   instalar_sistema_completo.bat
+   ```
+
+3. **Aguarde a instalação** (5-10 minutos)
+   - Criação do ambiente virtual
+   - Download de todas as dependências
+   - Inicialização do banco de dados
+   - Criação de dados de exemplo
+
+4. **Inicie o sistema**:
+   ```batch
+   executar_sistema.bat
+   ```
+
+5. **Acesse no navegador**: http://localhost:8501
+
+### Login Padrão
+- **Usuário**: `admin`
+- **Senha**: *Definida durante a instalação*
 
 ---
 
-## 🚀 Instalação Rápida
+## 📋 Funcionalidades
 
-### 1. Requisitos
-- Python 3.8+
-- Conexão com internet (para install de dependências)
+### ⚡ **Equipamentos Elétricos**
+- Gestão completa de ferramentas elétricas
+- Controle de status (Disponível, Em Uso, Manutenção)
+- Movimentação rápida com quantidade
+- Filtros avançados por categoria e localização
 
-### 2. Instalação Automática
-```bash
-# Execute o instalador
-instalar_web.bat
+### 🔧 **Equipamentos Manuais**
+- Controle de ferramentas manuais
+- Gestão de estado (Novo, Usado, Danificado)
+- Movimentação rápida integrada
+- Controle por responsável
 
-# Ou manualmente:
-pip install streamlit pandas plotly
-streamlit run app.py
-```
+### 📦 **Insumos e Materiais**
+- Controle de estoque em tempo real
+- Alertas de estoque baixo
+- Entrada/saída rápida
+- Controle de preços e valores totais
 
-### 3. Acesso ao Sistema
-- **URL Local**: http://localhost:8501
-- **Login**: admin / 123456 ou cinthia / C1nt1@2024
+### 🏗️ **Obras/Departamentos**
+- Gestão de obras e projetos
+- Controle de departamentos internos
+- **33 locais pré-cadastrados** organizados por categoria
+- Sistema de edição inline
+- Controle de cronograma
+
+### 📊 **Movimentações**
+- Registro direto sem aprovação
+- Controle de quantidade preciso
+- Integração com todos os módulos
+- Rastreamento em tempo real
+
+### 📈 **Relatórios Completos**
+- Relatórios de inventário
+- Análise de movimentações
+- Relatórios financeiros
+- Métricas em tempo real
+
+### 👥 **Gestão de Usuários**
+- Sistema de autenticação
+- Controle de acesso
+- Logs de atividades
 
 ---
 
-## 📁 Estrutura do Projeto
+## 🗂️ Estrutura do Projeto
 
 ```
 Inv_Web/
-├── app.py                    # Aplicação principal
-├── requirements.txt          # Dependências
-├── instalar_web.bat         # Instalador automático
-├── executar_web.bat         # Executar sistema
-├── .streamlit/
-│   └── config.toml          # Configurações Streamlit
-├── database/
-│   ├── connection.py        # Conexão com banco
-│   └── inventario.db        # Banco SQLite
-├── utils/
-│   └── auth.py              # Sistema de autenticação
-├── pages/                   # Páginas do sistema
-│   ├── dashboard.py         # Dashboard principal
-│   ├── equipamentos_eletricos.py
-│   ├── equipamentos_manuais.py
-│   ├── insumos.py
-│   ├── obras.py
-│   ├── movimentacoes.py
-│   ├── relatorios.py
-│   └── configuracoes.py
-└── static/                  # Arquivos estáticos
+│
+├── 📁 database/
+│   └── inventario.db           # Banco SQLite
+│
+├── 📁 pages/
+│   ├── dashboard.py           # Página inicial
+│   ├── equipamentos_eletricos.py    # Gestão equipamentos elétricos
+│   ├── equipamentos_manuais.py      # Gestão equipamentos manuais
+│   ├── insumos.py             # Gestão de insumos
+│   ├── obras.py               # Obras/Departamentos
+│   ├── movimentacoes.py       # Sistema de movimentações
+│   ├── relatorios.py          # Relatórios completos
+│   └── configuracoes.py       # Configurações do sistema
+│
+├── 📁 utils/
+│   └── auth.py                # Sistema de autenticação
+│
+├── 📁 database/
+│   └── connection.py          # Conexão com banco
+│
+├── 📁 venv_web/               # Ambiente virtual (criado na instalação)
+│
+├── app.py                     # Aplicação principal
+├── requirements.txt           # Dependências Python
+├── instalar_sistema_completo.bat    # Instalador automático
+└── executar_sistema.bat       # Inicializador do sistema
 ```
 
 ---
 
-## 🎯 Funcionalidades
+## 🛠️ Instalação Manual (Avançado)
 
-### ✅ Implementadas
-- 🔐 **Sistema de Login** - Autenticação segura
-- 🏠 **Dashboard** - Métricas e visão geral
-- ⚡ **Equipamentos Elétricos** - CRUD completo
-- 📊 **Gráficos Interativos** - Plotly charts
-- 🔍 **Busca em Tempo Real** - Filtros dinâmicos
-- 👤 **Gestão de Sessões** - Controle de usuários
-
-### 🔄 Em Desenvolvimento (70% concluído)
-- 🔧 **Equipamentos Manuais** - Interface completa
-- 📦 **Insumos** - Controle de estoque
-- 🏗️ **Obras** - Gestão de projetos
-- 📊 **Movimentações** - Transferências
-- 📈 **Relatórios** - Exportação e gráficos
-- ⚙️ **Configurações** - Preferências
-
----
-
-## 👥 Acesso Multiusuário
-
-### Local (Rede Interna)
+### 1. Clonar Repositório
 ```bash
-# Outros usuários na mesma rede podem acessar via:
-http://SEU_IP:8501
-
-# Para descobrir seu IP:
-ipconfig
+git clone [URL_DO_REPOSITORIO]
+cd Inv_Web
 ```
 
-### Online (Internet)
-```bash
-# Deploy gratuito no Streamlit Cloud:
-1. Fazer upload para GitHub
-2. Conectar com Streamlit Cloud
-3. Deploy automático
-4. URL: https://seu-app.streamlit.app
+### 2. Criar Ambiente Virtual
+```batch
+python -m venv venv_web
+venv_web\Scripts\activate
+```
+
+### 3. Instalar Dependências
+```batch
+pip install -r requirements.txt
+```
+
+### 4. Inicializar Banco
+```batch
+python -c "from database.connection import init_database; init_database()"
+```
+
+### 5. Executar Sistema
+```batch
+streamlit run app.py --server.port 8501
 ```
 
 ---
 
-## 🛠️ Desenvolvimento
+## 📊 Dados de Exemplo Incluídos
 
-### Executar em Modo Desenvolvimento
-```bash
-executar_dev.bat
-# ou
-streamlit run app.py --server.runOnSave true
+### Equipamentos Elétricos (8 itens)
+- Furadeira Elétrica Bosch GSB 13 RE
+- Serra Circular Makita 5007MG
+- Parafusadeira Dewalt DCD771C2
+- Esmerilhadeira Bosch GWS 700
+- Máquina de Solda Inversora 200A
+- E mais...
+
+### Equipamentos Manuais (5 itens)
+- Martelo Stanley FatMax 20oz
+- Chave de Fenda Tramontina 1/4 x 6
+- Alicate Universal Gedore 8 pol
+- Nível de Alumínio Vonder 40cm
+- Trena Stanley 5m
+
+### Insumos (5 categorias)
+- Parafusos Phillips 3,5x25mm (500 unidades)
+- Fita Isolante Preta 19mm (25 peças)
+- Cabo Flexível 2,5mm² Azul (100 metros)
+- Tinta Acrílica Branca 18L (5 litas)
+- Lixa Madeira Grão 120 (50 unidades)
+
+### Obras/Departamentos (5 locais)
+- Obra - Residencial Vista Alegre
+- Obra - Edifício Comercial Centro
+- Obra - Shopping Mall Norte
+- Departamento - Almoxarifado Central
+- Departamento - Manutenção
+
+---
+
+## 🔧 Configurações Avançadas
+
+### Alterar Porta do Servidor
+Edite o arquivo `executar_sistema.bat` e altere:
+```batch
+streamlit run app.py --server.port 8501
 ```
 
-### Adicionar Nova Página
-1. Criar arquivo em `pages/nova_pagina.py`
-2. Implementar função `show()`
-3. Adicionar no menu em `app.py`
+### Backup do Banco de Dados
+O banco SQLite está em: `database/inventario.db`
+Faça cópias regulares deste arquivo.
 
-### Personalizar Interface
-- **CSS**: Editar estilos em `app.py`
-- **Configurações**: Modificar `.streamlit/config.toml`
-- **Cores**: Alterar tema nas configurações
-
----
-
-## 🔒 Segurança
-
-### Sistema de Autenticação
-- Senhas criptografadas (SHA256)
-- Sessões com timeout
-- Log de auditoria
-- Controle de acesso por página
-
-### Dados
-- Banco SQLite local
-- Backup automático
-- Transações seguras
-- Validação de entrada
-
----
-
-## 📊 Métricas e Monitoramento
-
-### Dashboard Inclui:
-- Total de equipamentos
-- Status de disponibilidade
-- Alertas de estoque baixo
-- Valor do inventário
-- Movimentações recentes
-- Gráficos interativos
-
-### Relatórios:
-- Inventário completo
-- Por categoria
-- Por localização
-- Movimentações por período
-- Auditoria de ações
+### Logs do Sistema
+Os logs são exibidos no terminal durante a execução.
 
 ---
 
 ## 🆘 Solução de Problemas
 
-### Erro: "ModuleNotFoundError: No module named 'streamlit'"
-```bash
-pip install streamlit
-# ou execute: instalar_web.bat
+### Erro: "Python não encontrado"
+- Instale o Python 3.11+ do site oficial
+- Certifique-se de marcar "Add Python to PATH"
+- Reinicie o terminal/prompt
+
+### Erro: "pip não encontrado"
+```batch
+python -m ensurepip --upgrade
+python -m pip install --upgrade pip
 ```
 
-### Erro: "Database not found"
-```bash
-# Copie o banco da versão desktop:
-copy "..\inv\inventario.db" "database\inventario.db"
+### Erro: "Módulo não encontrado"
+```batch
+venv_web\Scripts\activate
+pip install -r requirements.txt
 ```
 
-### Erro: "Port 8501 already in use"
-```bash
-# Use porta diferente:
-streamlit run app.py --server.port 8502
-```
+### Sistema não abre no navegador
+- Verifique se a porta 8501 está livre
+- Acesse manualmente: http://localhost:8501
+- Tente uma porta diferente: `--server.port 8502`
 
-### Sistema lento
-```bash
-# Verifique quantidade de dados
-# Para grandes volumes, considere paginação
-```
+### Erro de Banco de Dados
+- Exclua o arquivo `database/inventario.db`
+- Execute novamente `instalar_sistema_completo.bat`
 
 ---
 
-## 🌟 Deploy Online (Gratuito)
+## 📈 Próximos Recursos (Roadmap)
 
-### Streamlit Cloud
-1. **Criar repositório GitHub**
-   ```bash
-   git init
-   git add .
-   git commit -m "Versão web inicial"
-   git remote add origin https://github.com/USUARIO/inventario-web.git
-   git push -u origin main
-   ```
-
-2. **Deploy no Streamlit Cloud**
-   - Acesse: https://share.streamlit.io
-   - Conecte GitHub
-   - Selecione repositório
-   - App file: `app.py`
-   - Deploy automático!
-
-3. **URL Final**
-   ```
-   https://USUARIO-inventario-web-app-HASH.streamlit.app
-   ```
-
-### Railway (Alternativa)
-```bash
-# Instalar Railway CLI
-npm install -g @railway/cli
-
-# Deploy
-railway login
-railway init
-railway up
-```
-
----
-
-## 📈 Roadmap
-
-### Versão 2.1 (Próximas 2 semanas)
-- ✅ Completar todas as páginas
-- ✅ Sistema de notificações
-- ✅ Backup automático
-- ✅ Relatórios avançados
-
-### Versão 2.2 (Próximo mês)
-- 📱 App mobile (PWA)
-- 🔔 Notificações push
-- 📧 Relatórios por email
-- 🎨 Temas personalizáveis
-
-### Versão 3.0 (Futuro)
-- 🤖 IA para previsão de estoque
-- 📊 Business Intelligence
-- 🔄 Sincronização multi-filial
-- 📱 App nativo mobile
+- [ ] 📱 Interface mobile responsiva
+- [ ] 📧 Notificações por email
+- [ ] 📊 Dashboard com gráficos avançados
+- [ ] 🔄 Sincronização em nuvem
+- [ ] 📋 Etiquetas com QR Code
+- [ ] 🎯 Relatórios personalizáveis
+- [ ] 👥 Perfis de usuário com permissões
+- [ ] 📅 Agendamento de manutenções
 
 ---
 
 ## 🤝 Contribuição
 
-### Como Contribuir
-1. Fork o projeto
-2. Crie branch para feature
-3. Commit das mudanças
-4. Push para branch
-5. Abra Pull Request
-
-### Áreas que Precisam de Ajuda
-- 🎨 Design/UX
-- 📊 Relatórios avançados
-- 📱 Responsividade mobile
-- 🧪 Testes automatizados
-- 📖 Documentação
-
----
-
-## 📞 Suporte
-
-### Problemas Técnicos
-- Criar issue no GitHub
-- Incluir: SO, Python version, mensagem de erro
-- Print da tela se possível
-
-### Sugestões de Funcionalidades
-- Abrir discussão no GitHub
-- Descrever caso de uso
-- Mockups são bem-vindos
+1. Fork do projeto
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
 
 ---
 
 ## 📄 Licença
 
-Este projeto é de uso interno. Todos os direitos reservados.
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para detalhes.
 
 ---
 
-## 🎉 Créditos
+## 📞 Suporte
 
-**Desenvolvido com:**
-- [Streamlit](https://streamlit.io/) - Framework web
-- [Plotly](https://plotly.com/) - Gráficos interativos
-- [Pandas](https://pandas.pydata.org/) - Manipulação de dados
-- [SQLite](https://sqlite.org/) - Banco de dados
+- **Email**: suporte@inventario.com
+- **Documentação**: [Link para documentação]
+- **Issues**: [Link para GitHub Issues]
 
-**2025 - Sistema de Inventário Web v2.0**
+---
+
+## 🎯 Versão Atual: v2.0
+
+### ✨ Novidades desta versão:
+- ✅ Sistema de movimentação rápida
+- ✅ Integração completa entre módulos
+- ✅ Interface moderna e intuitiva
+- ✅ 33 locais pré-cadastrados
+- ✅ Instalador automático
+- ✅ Banco de dados com exemplos
+- ✅ Sistema de edição inline
+- ✅ Controle de quantidade preciso
+- ✅ Relatórios completos
+
+---
+
+**Desenvolvido com ❤️ usando Python + Streamlit**

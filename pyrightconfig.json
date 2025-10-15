@@ -1,0 +1,13 @@
+{
+    "reportMissingTypeStubs": false,
+    "reportUnknownParameterType": false,
+    "reportUnknownVariableType": false,
+    "reportUnknownMemberType": false,
+    "reportUnknownArgumentType": false,
+    "reportUnknownLambdaType": false,
+    "reportImplicitStringConcatenation": false,
+    "reportMissingParameterType": false,
+    "reportUnnecessaryTypeIgnoreComment": false,
+    "pythonVersion": "3.10",
+    "typeCheckingMode": "basic"
+}

@@ -9,7 +9,7 @@ import sqlite3
 import streamlit as st
 import os
 import threading
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 
 # Lock para thread safety
 db_lock = threading.Lock()
@@ -53,7 +53,7 @@ class DatabaseConnection:
                 
             return self._connection
     
-    def execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    def execute_query(self, query: str, params: tuple[Any, ...] = ()) -> List[Dict[str, Any]]:
         """
         Executar consulta SELECT
         
@@ -78,7 +78,7 @@ class DatabaseConnection:
             st.error(f"Erro na consulta: {e}")
             return []
     
-    def execute_update(self, query: str, params: tuple = ()) -> bool:
+    def execute_update(self, query: str, params: tuple[Any, ...] = ()) -> bool:
         """
         Executar query de modificação (INSERT, UPDATE, DELETE)
         
@@ -139,7 +139,7 @@ def init_database():
         st.error(f"❌ Erro na inicialização do banco: {e}")
         return False
 
-def test_database():
+def test_database() -> Dict[str, Any]:
     """Testar todas as tabelas do banco"""
     db = get_database()
     
@@ -148,7 +148,7 @@ def test_database():
         'insumos', 'obras', 'movimentacoes', 'responsaveis'
     ]
     
-    results = {}
+    results: Dict[str, Any] = {}
     
     for table in tables_to_test:
         try:
