@@ -9,13 +9,20 @@ import streamlit as st
 import sys
 import os
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import io
 import base64
 import json
+
+# Importação segura do Plotly
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    st.warning("⚠️ Plotly não disponível. Relatórios serão exibidos em formato alternativo.")
 
 # Adicionar pasta raiz ao path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -29,6 +36,28 @@ if not check_authentication():
     st.stop()
 
 logger = SystemLogger()
+
+def safe_plotly_chart(chart_func, *args, **kwargs):
+    """Função auxiliar para criar gráficos com fallback"""
+    if PLOTLY_AVAILABLE:
+        try:
+            return chart_func(*args, **kwargs)
+        except Exception as e:
+            st.error(f"Erro ao criar gráfico: {e}")
+            return None
+    else:
+        return None
+
+def show_chart_or_table(fig, df, title="Dados"):
+    """Mostrar gráfico se disponível, senão mostrar tabela"""
+    if fig is not None and PLOTLY_AVAILABLE:
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.markdown(f"#### 📊 {title}")
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Nenhum dado disponível para exibir")
 
 class AdvancedReportsManager:
     """Gerenciador de relatórios avançados"""
@@ -146,17 +175,24 @@ class AdvancedReportsManager:
         
         status_counts = df_inventario['status'].value_counts()
         
-        fig = px.pie(
-            values=status_counts.values,
-            names=status_counts.index,
-            title="Distribuição por Status",
-            color_discrete_sequence=px.colors.qualitative.Set3
-        )
-        
-        fig.update_traces(textposition='inside', textinfo='percent+label')
-        fig.update_layout(height=400)
-        
-        return fig
+        if PLOTLY_AVAILABLE:
+            try:
+                fig = px.pie(
+                    values=status_counts.values,
+                    names=status_counts.index,
+                    title="Distribuição por Status",
+                    color_discrete_sequence=px.colors.qualitative.Set3
+                )
+                
+                fig.update_traces(textposition='inside', textinfo='percent+label')
+                fig.update_layout(height=400)
+                
+                return fig
+            except Exception as e:
+                st.error(f"Erro ao criar gráfico de pizza: {e}")
+                return None
+        else:
+            return None
     
     def create_tipo_bar_chart(self, df_inventario):
         """Criar gráfico de barras para tipos de itens"""
@@ -165,18 +201,25 @@ class AdvancedReportsManager:
         
         tipo_counts = df_inventario['tipo'].value_counts()
         
-        fig = px.bar(
-            x=tipo_counts.index,
-            y=tipo_counts.values,
-            title="Distribuição por Tipo de Item",
-            labels={'x': 'Tipo', 'y': 'Quantidade'},
-            color=tipo_counts.values,
-            color_continuous_scale='viridis'
-        )
-        
-        fig.update_layout(height=400, showlegend=False)
-        
-        return fig
+        if PLOTLY_AVAILABLE:
+            try:
+                fig = px.bar(
+                    x=tipo_counts.index,
+                    y=tipo_counts.values,
+                    title="Distribuição por Tipo de Item",
+                    labels={'x': 'Tipo', 'y': 'Quantidade'},
+                    color=tipo_counts.values,
+                    color_continuous_scale='viridis'
+                )
+                
+                fig.update_layout(height=400, showlegend=False)
+                
+                return fig
+            except Exception as e:
+                st.error(f"Erro ao criar gráfico de barras: {e}")
+                return None
+        else:
+            return None
     
     def create_localizacao_chart(self, df_inventario):
         """Criar gráfico para localização dos itens"""
@@ -433,18 +476,18 @@ def show():
             
             with col1:
                 fig_status = reports_manager.create_status_pie_chart(df_inventario)
-                if fig_status:
-                    st.plotly_chart(fig_status, use_container_width=True)
+                status_counts = df_inventario['status'].value_counts() if not df_inventario.empty else pd.Series()
+                show_chart_or_table(fig_status, status_counts.to_frame('Quantidade'), "Distribuição por Status")
             
             with col2:
                 fig_tipo = reports_manager.create_tipo_bar_chart(df_inventario)
-                if fig_tipo:
-                    st.plotly_chart(fig_tipo, use_container_width=True)
+                tipo_counts = df_inventario['tipo'].value_counts() if not df_inventario.empty else pd.Series()
+                show_chart_or_table(fig_tipo, tipo_counts.to_frame('Quantidade'), "Distribuição por Tipo")
             
             # Gráfico de localização
             fig_loc = reports_manager.create_localizacao_chart(df_inventario)
-            if fig_loc:
-                st.plotly_chart(fig_loc, use_container_width=True)
+            loc_counts = df_inventario['localizacao'].value_counts() if not df_inventario.empty else pd.Series()
+            show_chart_or_table(fig_loc, loc_counts.to_frame('Quantidade'), "Distribuição por Localização")
         
         else:
             st.warning("⚠️ Nenhum dado encontrado para gerar o dashboard")

@@ -9,15 +9,23 @@ import streamlit as st
 import sys
 import os
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import io
 import base64
 import json
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
+
+# Importação segura do plotly
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    px = None
+    go = None
 
 # Adicionar pasta raiz ao path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -31,6 +39,36 @@ if not check_authentication():
     st.stop()
 
 logger = SystemLogger()
+
+def get_database():
+    """Obter conexão com banco de dados"""
+    return DatabaseConnection()
+
+def safe_plotly_chart(chart_func, fallback_title="Gráfico"):
+    """Função auxiliar para exibir gráficos com fallback"""
+    if PLOTLY_AVAILABLE:
+        try:
+            return chart_func()
+        except Exception as e:
+            st.error(f"Erro ao gerar gráfico: {str(e)}")
+            st.info(f"📊 {fallback_title} - Dados disponíveis em formato de tabela")
+            return None
+    else:
+        st.info(f"📊 {fallback_title} - Plotly não disponível, exibindo dados em tabela")
+        return None
+
+def show_chart_or_table(chart_result, data, title="Dados"):
+    """Mostrar gráfico ou tabela como fallback"""
+    if chart_result is not None:
+        st.plotly_chart(chart_result, use_container_width=True)
+    else:
+        st.markdown(f"**📊 {title}**")
+        if isinstance(data, pd.DataFrame):
+            st.dataframe(data)
+        elif isinstance(data, dict):
+            st.json(data)
+        else:
+            st.write(data)
 
 def get_inventario_data():
     """Obter dados do inventário para relatórios"""
@@ -60,34 +98,24 @@ def get_inventario_data():
     return pd.DataFrame(all_data) if all_data else pd.DataFrame()
 
 def create_excel_download(df, filename):
-    """Criar link de download para Excel"""
-    output = io.BytesIO()
-    
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Relatório')
+    """Criar link de download para Excel ou CSV"""
+    try:
+        # Tentar Excel primeiro
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Relatório')
         
-        # Formatação básica
-        workbook = writer.book
-        worksheet = writer.sheets['Relatório']
-        
-        # Formato do cabeçalho
-        header_format = workbook.add_format({
-            'bold': True,
-            'text_wrap': True,
-            'valign': 'top',
-            'fg_color': '#D7E4BC',
-            'border': 1
-        })
-        
-        # Aplicar formato ao cabeçalho
-        for col_num, value in enumerate(df.columns.values):
-            worksheet.write(0, col_num, value, header_format)
-            worksheet.set_column(col_num, col_num, 15)
+        processed_data = output.getvalue()
+        b64 = base64.b64encode(processed_data).decode()
+        return f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="{filename}">📥 Baixar Excel</a>'
     
-    processed_data = output.getvalue()
-    b64 = base64.b64encode(processed_data).decode()
-    
-    return f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="{filename}">📥 Baixar Excel</a>'
+    except Exception as e:
+        # Fallback para CSV se Excel falhar
+        output = io.StringIO()
+        df.to_csv(output, index=False)
+        csv_filename = filename.replace('.xlsx', '.csv')
+        encoded = base64.b64encode(output.getvalue().encode()).decode()
+        return f'<a href="data:text/csv;base64,{encoded}" download="{csv_filename}">📥 Baixar CSV</a>'
 
 def show_inventario_completo():
     """Mostrar relatório de inventário completo"""
@@ -126,16 +154,34 @@ def show_inventario_completo():
     with col1:
         # Gráfico por tipo
         tipo_counts = df['tipo'].value_counts()
-        fig_tipo = px.pie(values=tipo_counts.values, names=tipo_counts.index, 
-                         title="Distribuição por Tipo")
-        st.plotly_chart(fig_tipo, use_container_width=True)
+        if PLOTLY_AVAILABLE and px:
+            try:
+                fig_tipo = px.pie(values=tipo_counts.values, names=tipo_counts.index, 
+                                 title="Distribuição por Tipo")
+                st.plotly_chart(fig_tipo, use_container_width=True)
+            except Exception as e:
+                st.error(f"Erro ao gerar gráfico: {str(e)}")
+                st.markdown("**📊 Distribuição por Tipo**")
+                st.dataframe(tipo_counts.to_frame("Quantidade"))
+        else:
+            st.markdown("**📊 Distribuição por Tipo**")
+            st.dataframe(tipo_counts.to_frame("Quantidade"))
     
     with col2:
         # Gráfico por categoria
         cat_counts = df['categoria'].value_counts().head(10)
-        fig_cat = px.bar(x=cat_counts.values, y=cat_counts.index, 
-                        orientation='h', title="Top 10 Categorias")
-        st.plotly_chart(fig_cat, use_container_width=True)
+        if PLOTLY_AVAILABLE and px:
+            try:
+                fig_cat = px.bar(x=cat_counts.values, y=cat_counts.index, 
+                                orientation='h', title="Top 10 Categorias")
+                st.plotly_chart(fig_cat, use_container_width=True)
+            except Exception as e:
+                st.error(f"Erro ao gerar gráfico: {str(e)}")
+                st.markdown("**📊 Top 10 Categorias**")
+                st.dataframe(cat_counts.to_frame("Quantidade"))
+        else:
+            st.markdown("**📊 Top 10 Categorias**")
+            st.dataframe(cat_counts.to_frame("Quantidade"))
     
     # Tabela de dados
     st.markdown("### 📋 Detalhes do Inventário")
@@ -231,9 +277,18 @@ def show_movimentacoes_relatorio():
     df_daily = df_mov.groupby(df_mov['data'].dt.date).size().reset_index()
     df_daily.columns = ['data', 'movimentacoes']
     
-    fig_daily = px.line(df_daily, x='data', y='movimentacoes', 
-                       title="Movimentações por Dia")
-    st.plotly_chart(fig_daily, use_container_width=True)
+    if PLOTLY_AVAILABLE and px:
+        try:
+            fig_daily = px.line(df_daily, x='data', y='movimentacoes', 
+                               title="Movimentações por Dia")
+            st.plotly_chart(fig_daily, use_container_width=True)
+        except Exception as e:
+            st.error(f"Erro ao gerar gráfico: {str(e)}")
+            st.markdown("**📊 Movimentações por Dia**")
+            st.dataframe(df_daily)
+    else:
+        st.markdown("**📊 Movimentações por Dia**")
+        st.dataframe(df_daily)
     
     # Tabela de movimentações
     st.markdown("### 📋 Detalhes das Movimentações")

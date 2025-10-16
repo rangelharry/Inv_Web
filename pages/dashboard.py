@@ -7,10 +7,18 @@ Página inicial com métricas, gráficos e informações gerais
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px  # type: ignore
 from datetime import datetime, timedelta
 import sys
 import os
+
+# Importação segura do Plotly
+try:
+    import plotly.express as px  # type: ignore
+    import plotly.graph_objects as go  # type: ignore
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    st.warning("⚠️ Plotly não disponível. Gráficos serão exibidos em formato alternativo.")
 
 # Adicionar pasta raiz ao path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -28,80 +36,99 @@ def get_dashboard_metrics() -> Dict[str, Any]:
     db = get_database()
     
     try:
-        # Contadores principais otimizados com uma query
-        main_counts = db.execute_query("""
-            SELECT 
-                (SELECT COUNT(*) FROM equipamentos_eletricos) as equipamentos_eletricos,
-                (SELECT COUNT(*) FROM equipamentos_manuais) as equipamentos_manuais,
-                (SELECT COUNT(*) FROM insumos) as insumos,
-                (SELECT COUNT(*) FROM obras) as obras
+        # Contadores principais - consultas individuais para evitar erros
+        try:
+            equipamentos_result = db.execute_query("SELECT COUNT(*) as count FROM equipamentos_eletricos")
+            equipamentos = equipamentos_result[0]['count'] if equipamentos_result else 0
+        except:
+            equipamentos = 0
+            
+        try:
+            equipamentos_manuais_result = db.execute_query("SELECT COUNT(*) as count FROM equipamentos_manuais")
+            equipamentos_manuais = equipamentos_manuais_result[0]['count'] if equipamentos_manuais_result else 0
+        except:
+            equipamentos_manuais = 0
+            
+        try:
+            insumos_result = db.execute_query("SELECT COUNT(*) as count FROM insumos")
+            insumos = insumos_result[0]['count'] if insumos_result else 0
+        except:
+            insumos = 0
+            
+        try:
+            obras_result = db.execute_query("SELECT COUNT(*) as count FROM obras")
+            obras = obras_result[0]['count'] if obras_result else 0
+        except:
+            obras = 0
+        
+        # Status dos equipamentos - consultas separadas para evitar problemas de UNION
+        # Equipamentos disponíveis
+        disp_eletricos = db.execute_query("""
+            SELECT COUNT(*) as count FROM equipamentos_eletricos WHERE status = 'Disponível'
+        """)
+        disp_manuais = db.execute_query("""
+            SELECT COUNT(*) as count FROM equipamentos_manuais WHERE status = 'Disponível'
         """)
         
-        if main_counts:
-            counts = main_counts[0]
-            equipamentos = counts.get('equipamentos_eletricos', 0)
-            equipamentos_manuais = counts.get('equipamentos_manuais', 0)
-            insumos = counts.get('insumos', 0)
-            obras = counts.get('obras', 0)
-        else:
-            equipamentos = equipamentos_manuais = insumos = obras = 0
+        count_disp_eletricos = disp_eletricos[0]['count'] if disp_eletricos else 0
+        count_disp_manuais = disp_manuais[0]['count'] if disp_manuais else 0
+        equipamentos_disponiveis = count_disp_eletricos + count_disp_manuais
         
-        # Status dos equipamentos com query otimizada
-        status_counts = db.execute_query("""
-            SELECT 
-                (SELECT COUNT(*) FROM equipamentos_eletricos WHERE status = 'Disponível') +
-                (SELECT COUNT(*) FROM equipamentos_manuais WHERE status = 'Disponível') as disponiveis,
-                (SELECT COUNT(*) FROM equipamentos_eletricos WHERE status = 'Em Uso') +
-                (SELECT COUNT(*) FROM equipamentos_manuais WHERE status = 'Em Uso') as em_uso
+        # Contar equipamentos em uso - eletricos e manuais (consultas separadas)
+        equipamentos_em_uso_eletricos = db.execute_query("""
+            SELECT COUNT(*) as count FROM equipamentos_eletricos WHERE status = 'Em uso'
+        """)
+        equipamentos_em_uso_manuais = db.execute_query("""
+            SELECT COUNT(*) as count FROM equipamentos_manuais WHERE status = 'Em Uso'
         """)
         
-        if status_counts:
-            equipamentos_disponiveis = status_counts[0].get('disponiveis', 0)
-            equipamentos_em_uso = status_counts[0].get('em_uso', 0)
-        else:
-            equipamentos_disponiveis = equipamentos_em_uso = 0
+        count_eletricos = equipamentos_em_uso_eletricos[0]['count'] if equipamentos_em_uso_eletricos else 0
+        count_manuais = equipamentos_em_uso_manuais[0]['count'] if equipamentos_em_uso_manuais else 0
+        equipamentos_em_uso = count_eletricos + count_manuais
         
-        # Contar equipamentos em uso - eletricos e manuais
-        equipamentos_em_uso_result = db.execute_query("""
-            SELECT COUNT(*) as count FROM (
-                SELECT * FROM equipamentos_eletricos WHERE status = 'Em Uso'
-                UNION ALL
-                SELECT * FROM equipamentos_manuais WHERE status = 'Em Uso'
-            )
+        # Contar equipamentos em manutenção - eletricos e manuais (consultas separadas)
+        equipamentos_manutencao_eletricos = db.execute_query("""
+            SELECT COUNT(*) as count FROM equipamentos_eletricos WHERE status = 'Em manutenção'
         """)
-        equipamentos_em_uso = equipamentos_em_uso_result[0]['count'] if equipamentos_em_uso_result else 0
+        equipamentos_manutencao_manuais = db.execute_query("""
+            SELECT COUNT(*) as count FROM equipamentos_manuais WHERE status = 'Manutenção'
+        """)
         
-        # Contar equipamentos em manutenção - eletricos e manuais  
-        equipamentos_manutencao_result = db.execute_query("""
-            SELECT COUNT(*) as count FROM (
-                SELECT * FROM equipamentos_eletricos WHERE status = 'Manutenção'
-                UNION ALL
-                SELECT * FROM equipamentos_manuais WHERE status = 'Manutenção'
-            )
-        """)
-        equipamentos_manutencao = equipamentos_manutencao_result[0]['count'] if equipamentos_manutencao_result else 0
+        count_manut_eletricos = equipamentos_manutencao_eletricos[0]['count'] if equipamentos_manutencao_eletricos else 0
+        count_manut_manuais = equipamentos_manutencao_manuais[0]['count'] if equipamentos_manutencao_manuais else 0
+        equipamentos_manutencao = count_manut_eletricos + count_manut_manuais
         
         # Insumos com estoque baixo
-        insumos_baixo_estoque_result = db.execute_query("""
-            SELECT COUNT(*) as count FROM insumos 
-            WHERE quantidade <= quantidade_minima
-        """)
-        insumos_baixo_estoque = insumos_baixo_estoque_result[0]['count'] if insumos_baixo_estoque_result else 0
+        try:
+            insumos_baixo_estoque_result = db.execute_query("""
+                SELECT COUNT(*) as count FROM insumos 
+                WHERE quantidade <= quantidade_minima
+            """)
+            insumos_baixo_estoque = insumos_baixo_estoque_result[0]['count'] if insumos_baixo_estoque_result else 0
+        except:
+            insumos_baixo_estoque = 0
         
         # Valor total do inventário
-        valor_total_result = db.execute_query("""
-            SELECT COALESCE(SUM(quantidade * preco_unitario), 0) as total 
-            FROM insumos WHERE preco_unitario IS NOT NULL AND preco_unitario > 0
-        """)
-        valor_total = valor_total_result[0]['total'] if valor_total_result else 0
+        try:
+            valor_total_result = db.execute_query("""
+                SELECT COALESCE(SUM(quantidade * preco_unitario), 0) as total 
+                FROM insumos WHERE preco_unitario IS NOT NULL AND preco_unitario > 0
+            """)
+            valor_total = valor_total_result[0]['total'] if valor_total_result else 0
+        except:
+            valor_total = 0
         
         # Movimentações recentes (últimos 7 dias)
         data_limite = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-        movimentacoes_recentes_result = db.execute_query(f"""
-            SELECT COUNT(*) as count FROM movimentacoes 
-            WHERE data >= '{data_limite}'
-        """)
-        movimentacoes_recentes = movimentacoes_recentes_result[0]['count'] if movimentacoes_recentes_result else 0
+        try:
+            movimentacoes_recentes_result = db.execute_query("""
+                SELECT COUNT(*) as count FROM movimentacoes 
+                WHERE data >= ?
+            """, (data_limite,))
+            movimentacoes_recentes = movimentacoes_recentes_result[0]['count'] if movimentacoes_recentes_result else 0
+        except:
+            # Se a tabela movimentacoes não existir ou houver erro, usar 0
+            movimentacoes_recentes = 0
         
         return {
             'equipamentos': equipamentos,
@@ -180,26 +207,42 @@ def show_status_chart(metrics: Dict[str, Any]) -> None:
         }
         
         # Criar gráfico de pizza
-        fig = px.pie(
-            values=status_data['Quantidade'],
-            names=status_data['Status'],
-            color_discrete_sequence=status_data['Cores'],
-            title="Distribuição por Status"
-        )
-        
-        fig.update_traces(
-            textposition='inside',
-            textinfo='percent+label',
-            hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
-        )
-        
-        fig.update_layout(
-            showlegend=True,
-            height=400,
-            font_size=12
-        )
-        
-        st.plotly_chart(fig, use_container_width=True, key="status_chart")
+        if PLOTLY_AVAILABLE:
+            fig = px.pie(
+                values=status_data['Quantidade'],
+                names=status_data['Status'],
+                color_discrete_sequence=status_data['Cores'],
+                title="Distribuição por Status"
+            )
+            
+            fig.update_traces(
+                textposition='inside',
+                textinfo='percent+label',
+                hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
+            )
+            
+            fig.update_layout(
+                showlegend=True,
+                height=400,
+                font_size=12
+            )
+            
+            st.plotly_chart(fig, use_container_width=True, key="status_chart")
+        else:
+            # Versão alternativa sem Plotly - usando métricas
+            st.markdown("#### 📊 Distribuição por Status")
+            
+            total = sum(status_data['Quantidade'])
+            if total > 0:
+                for i, (status, qtd, cor) in enumerate(zip(status_data['Status'], status_data['Quantidade'], status_data['Cores'])):
+                    percentual = (qtd / total) * 100
+                    st.metric(
+                        label=status,
+                        value=qtd,
+                        delta=f"{percentual:.1f}%"
+                    )
+            else:
+                st.info("📊 Nenhum equipamento cadastrado ainda")
     
     with col2:
         st.markdown("#### 📋 Resumo")
