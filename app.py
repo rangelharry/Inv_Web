@@ -43,6 +43,12 @@ def init_session_state():
     if 'user_actions' not in st.session_state:
         st.session_state.user_actions = []
     
+    # Cache e performance
+    if 'cache_data' not in st.session_state:
+        st.session_state.cache_data = {}
+    if 'cache_timestamps' not in st.session_state:
+        st.session_state.cache_timestamps = {}
+    
     # Outras variáveis
     if 'selected_theme' not in st.session_state:
         st.session_state.selected_theme = 'default'

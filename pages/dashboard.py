@@ -25,12 +25,11 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from database.connection import get_database
 from utils.auth import get_auth
-from utils.performance import get_cache_manager, cache_data, optimize_query_performance
+from utils.performance import get_cache_manager, optimize_query_performance
 from utils.lazy_loading import get_lazy_loader, lazy_component, lazy_chart
 from utils.feedback import get_feedback_manager, NotificationType
 from typing import Dict, Any
 
-@cache_data(max_age=300, persist=True)  # Cache por 5 minutos
 def get_dashboard_metrics() -> Dict[str, Any]:
     """Obter métricas para o dashboard com cache otimizado"""
     db = get_database()
