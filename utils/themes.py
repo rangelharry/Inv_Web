@@ -230,7 +230,7 @@ class ThemeManager:
             
             /* Sidebar customizada */
             .stSidebar {{
-                background: linear-gradient(135deg, {theme['sidebar_color']}, {theme['background_color']});
+                background: {theme['sidebar_color']};
             }}
             
             .stSidebar .stSelectbox > div > div {{
@@ -241,7 +241,7 @@ class ThemeManager:
             
             /* Botões personalizados */
             .stButton > button {{
-                background: linear-gradient(135deg, {theme['primary_color']}, {theme['secondary_color']});
+                background: {theme['primary_color']};
                 color: white;
                 border: none;
                 border-radius: {theme['border_radius']};
@@ -284,7 +284,7 @@ class ThemeManager:
                 left: 0;
                 width: 100%;
                 height: 3px;
-                background: linear-gradient(90deg, {theme['primary_color']}, {theme['secondary_color']});
+                background: {theme['primary_color']};
             }}
             
             .metric-card:hover {{
@@ -300,22 +300,22 @@ class ThemeManager:
             }}
             
             .stSuccess {{
-                background: linear-gradient(135deg, {theme['success_color']}15, {theme['success_color']}05);
+                background: {theme['success_color']}15;
                 border-left: 4px solid {theme['success_color']};
             }}
             
             .stWarning {{
-                background: linear-gradient(135deg, {theme['warning_color']}15, {theme['warning_color']}05);
+                background: {theme['warning_color']}15;
                 border-left: 4px solid {theme['warning_color']};
             }}
             
             .stError {{
-                background: linear-gradient(135deg, {theme['error_color']}15, {theme['error_color']}05);
+                background: {theme['error_color']}15;
                 border-left: 4px solid {theme['error_color']};
             }}
             
             .stInfo {{
-                background: linear-gradient(135deg, {theme['primary_color']}15, {theme['primary_color']}05);
+                background: {theme['primary_color']}15;
                 border-left: 4px solid {theme['primary_color']};
             }}
             
@@ -378,7 +378,7 @@ class ThemeManager:
             }}
             
             .stTabs [aria-selected="true"] {{
-                background: linear-gradient(135deg, {theme['primary_color']}, {theme['secondary_color']});
+                background: {theme['primary_color']};
                 color: white !important;
             }}
             
@@ -389,7 +389,7 @@ class ThemeManager:
                 color: {theme['text_color']}80;
                 border-top: 2px solid {theme['border_color']};
                 margin-top: 3rem;
-                background: linear-gradient(135deg, {theme['background_color']}, {theme['sidebar_color']});
+                background: {theme['background_color']};
             }}
             
             /* Login container */
@@ -424,7 +424,7 @@ class ThemeManager:
             
             /* Progress bars */
             .stProgress > div > div > div > div {{
-                background: linear-gradient(90deg, {theme['primary_color']}, {theme['secondary_color']});
+                background: {theme['primary_color']};
             }}
             
             /* Expanders */

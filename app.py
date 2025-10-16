@@ -20,6 +20,36 @@ from utils.backup import get_backup_manager
 from utils.themes import get_theme_manager
 from utils.feedback import get_feedback_manager, NotificationType
 
+# Inicialização robusta do session_state
+def init_session_state():
+    """Inicializar todas as variáveis de session_state necessárias"""
+    # Rate limiting
+    if 'rate_limit_data' not in st.session_state:
+        st.session_state.rate_limit_data = {}
+    
+    # Autenticação
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'user_data' not in st.session_state:
+        st.session_state.user_data = None
+    if 'login_time' not in st.session_state:
+        st.session_state.login_time = None
+    
+    # Feedback e notificações
+    if 'notifications' not in st.session_state:
+        st.session_state.notifications = []
+    if 'loading_states' not in st.session_state:
+        st.session_state.loading_states = {}
+    if 'user_actions' not in st.session_state:
+        st.session_state.user_actions = []
+    
+    # Outras variáveis
+    if 'selected_theme' not in st.session_state:
+        st.session_state.selected_theme = 'default'
+
+# Executar inicialização
+init_session_state()
+
 # Configuração dinâmica da página
 # Verificar se usuário está logado para configurar sidebar
 try:
@@ -74,7 +104,7 @@ def show_header():
             text-align: center; 
             margin-bottom: 1.5rem;
             padding: 0.5rem;
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            background: #f8f9fa;
             border-radius: 25px;
             border: 1px solid #dee2e6;
         ">

@@ -75,16 +75,16 @@ def create_equipamento_manual(dados):
     try:
         query = """
             INSERT INTO equipamentos_manuais 
-            (codigo, descricao, tipo, quantitativo, estado, marca, valor, 
-             data_compra, loja, status, localizacao, observacoes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (codigo, descricao, tipo, quantitativo, status, marca, valor, 
+             data_compra, loja, localizacao, observacoes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         params = (
             dados['codigo'], dados['descricao'], dados['tipo'], 
-            dados['quantitativo'], dados['estado'], dados['marca'],
+            dados['quantitativo'], dados['status'], dados['marca'],
             dados['valor'], dados['data_compra'], dados['loja'],
-            dados['status'], dados['localizacao'], dados['observacoes']
+            dados['localizacao'], dados['observacoes']
         )
         
         result = db.execute_query(query, params)
@@ -106,15 +106,15 @@ def update_equipamento_manual(codigo, dados):
     try:
         query = """
             UPDATE equipamentos_manuais 
-            SET descricao=?, tipo=?, quantitativo=?, estado=?, marca=?, valor=?, 
-                data_compra=?, loja=?, status=?, localizacao=?, observacoes=?
+            SET descricao=?, tipo=?, quantitativo=?, status=?, marca=?, valor=?, 
+                data_compra=?, loja=?, localizacao=?, observacoes=?
             WHERE codigo=?
         """
         
         params = (
             dados['descricao'], dados['tipo'], dados['quantitativo'], 
-            dados['estado'], dados['marca'], dados['valor'],
-            dados['data_compra'], dados['loja'], dados['status'], 
+            dados['status'], dados['marca'], dados['valor'],
+            dados['data_compra'], dados['loja'], 
             dados['localizacao'], dados['observacoes'], codigo
         )
         

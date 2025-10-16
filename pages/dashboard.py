@@ -387,46 +387,35 @@ def show():
     feedback_manager = get_feedback_manager()
     feedback_manager.log_user_action("dashboard_access")
     
-    # Carregar métricas com lazy loading
-    def load_metrics():
-        return get_dashboard_metrics()
-    
-    metrics = lazy_component(
-        "dashboard_metrics",
-        load_metrics,
-        placeholder_text="📊 Carregando métricas do dashboard...",
-        cache_duration=300  # 5 minutos
-    )
-    
-    if not metrics:
-        st.error("❌ Erro ao carregar dados do dashboard")
-        return
-    
-    # Exibir componentes do dashboard com lazy loading
-    def load_metrics_cards():
+    # Carregar métricas
+    try:
+        metrics = get_dashboard_metrics()
+        if not metrics:
+            st.error("❌ Erro ao carregar dados do dashboard")
+            return
+            
+        # Exibir cartões de métricas
         show_metrics_cards(metrics)
-        return "metrics_loaded"
-    
-    lazy_component("metrics_cards", load_metrics_cards, placeholder_text="📊 Carregando cartões de métricas...")
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar métricas: {e}")
+        return
     
     st.markdown("---")
     
-    # Gráficos e alertas com lazy loading
+    # Gráficos e alertas
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        def load_status_chart():
+        try:
             show_status_chart(metrics)
-            return "chart_loaded"
-        
-        lazy_component("status_chart", load_status_chart, placeholder_text="📈 Gerando gráficos...")
+        except Exception as e:
+            st.error(f"Erro ao carregar gráficos: {e}")
     
     with col2:
-        def load_alerts():
+        try:
             show_alerts(metrics)
-            return "alerts_loaded"
-        
-        lazy_component("alerts_panel", load_alerts, placeholder_text="🚨 Carregando alertas...")
+        except Exception as e:
+            st.error(f"Erro ao carregar alertas: {e}")
     
     st.markdown("---")
     

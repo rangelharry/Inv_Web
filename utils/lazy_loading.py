@@ -66,7 +66,7 @@ class LazyLoader:
                     <div style="
                         text-align: center;
                         padding: 1.5rem;
-                        background: linear-gradient(135deg, #f1f3f4, #e8eaed);
+                        background: #f1f3f4;
                         border-radius: 10px;
                         border: 1px dashed #dadce0;
                     ">

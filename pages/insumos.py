@@ -297,160 +297,169 @@ def show():
         return
     
     st.markdown(f"## 📦 Insumos e Materiais")
-    st.markdown("Controle de estoque de materiais, insumos e consumíveis")
+    st.markdown("**CRUD Completo** - Gestão de materiais, insumos e consumíveis")
     
-    # Carregar dados
-    with st.spinner("📊 Carregando dados de insumos..."):
-        df = get_insumos_data()
+    # Abas principais - igual aos equipamentos manuais
+    tab_list, tab_create, tab_manage = st.tabs(["📋 Listagem", "➕ Cadastrar", "⚙️ Gerenciar"])
     
-    if df.empty:
-        st.warning("⚠️ Nenhum insumo encontrado no sistema")
-        st.info("""
-        💡 **Insumos não encontrados**
+    with tab_list:
+        # Carregar dados
+        with st.spinner("📊 Carregando dados de insumos..."):
+            df = get_insumos_data()
         
-        Para visualizar insumos nesta página:
-        - Certifique-se de que existem insumos cadastrados no sistema
-        - Verifique se a tabela 'insumos' existe no banco de dados
-        - Confirme suas permissões de acesso
-        """)
-        return
-    
-    # Métricas
-    st.markdown("### 📊 Resumo do Estoque")
-    show_metrics_insumos(df)
-    
-    st.markdown("---")
-    
-    # Alertas de estoque baixo
-    estoque_baixo = df[df['quantidade_atual'] <= df['quantidade_minima']]
-    if not estoque_baixo.empty:
-        st.error(f"⚠️ **ALERTA:** {len(estoque_baixo)} insumos com estoque baixo!")
+        if df.empty:
+            st.warning("⚠️ Nenhum insumo encontrado no sistema")
+            st.info("""
+            💡 **Insumos não encontrados**
+            
+            Para visualizar insumos nesta página:
+            - Certifique-se de que existem insumos cadastrados no sistema
+            - Verifique se a tabela 'insumos' existe no banco de dados
+            - Confirme suas permissões de acesso
+            """)
+            return
         
-        with st.expander("Ver insumos com estoque baixo"):
-            for _, item in estoque_baixo.iterrows():
-                st.warning(f"🔴 **{item['codigo']}** - {item['descricao']} (Atual: {item['quantidade_atual']} {item['unidade']}, Mínimo: {item['quantidade_minima']} {item['unidade']})")
-    
-    # Filtros
-    st.markdown("### 🔍 Filtros")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        categoria_filter = st.selectbox(
-            "Categoria:",
+        # Métricas
+        st.markdown("### 📊 Resumo do Estoque")
+        show_metrics_insumos(df)
+        
+        st.markdown("---")
+        
+        # Alertas de estoque baixo
+        estoque_baixo = df[df['quantidade_atual'] <= df['quantidade_minima']]
+        if not estoque_baixo.empty:
+            st.error(f"⚠️ **ALERTA:** {len(estoque_baixo)} insumos com estoque baixo!")
+            
+            with st.expander("Ver insumos com estoque baixo"):
+                for _, item in estoque_baixo.iterrows():
+                    st.warning(f"🔴 **{item['codigo']}** - {item['descricao']} (Atual: {item['quantidade_atual']} {item['unidade']}, Mínimo: {item['quantidade_minima']} {item['unidade']})")
+        
+        # Filtros
+        st.markdown("### 🔍 Filtros")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            categoria_filter = st.selectbox(
+                "Categoria:",
             ["Todas"] + list(df['categoria'].unique()),
             key="categoria_filter_insumos"
         )
     
-    with col2:
-        status_filter = st.selectbox(
-            "Status do Estoque:",
-            ["Todos", "🔴 Baixo", "🟡 Atenção", "🟢 OK"],
-            key="status_filter_insumos"
-        )
-    
-    with col3:
-        localizacao_filter = st.selectbox(
-            "Localização:",
-            ["Todas"] + list(df['localizacao'].unique()),
-            key="localizacao_filter_insumos"
-        )
-    
-    with col4:
-        search_term = st.text_input(
-            "Buscar:",
-            placeholder="Digite código ou descrição...",
-            key="search_insumos"
-        )
-    
-    # Aplicar filtros
-    df_filtered = df.copy()
-    
-    if categoria_filter != "Todas":
-        df_filtered = df_filtered[df_filtered['categoria'] == categoria_filter]
-    
-    if localizacao_filter != "Todas":
-        df_filtered = df_filtered[df_filtered['localizacao'] == localizacao_filter]
-    
-    if status_filter != "Todos":
-        if status_filter == "🔴 Baixo":
-            df_filtered = df_filtered[df_filtered['quantidade_atual'] <= df_filtered['quantidade_minima']]
-        elif status_filter == "🟡 Atenção":
-            df_filtered = df_filtered[
-                (df_filtered['quantidade_atual'] > df_filtered['quantidade_minima']) &
-                (df_filtered['quantidade_atual'] <= df_filtered['quantidade_minima'] * 1.5)
-            ]
-        elif status_filter == "🟢 OK":
-            df_filtered = df_filtered[df_filtered['quantidade_atual'] > df_filtered['quantidade_minima'] * 1.5]
-    
-    if search_term:
-        mask = (
-            df_filtered['codigo'].str.contains(search_term, case=False, na=False) |
-            df_filtered['descricao'].str.contains(search_term, case=False, na=False)
-        )
-        df_filtered = df_filtered[mask]
-    
-    st.markdown("---")
-    
-    # Tabela de insumos
-    if not df_filtered.empty:
-        st.markdown(f"### 📋 Lista de Insumos ({len(df_filtered)} encontrados)")
-        show_insumos_table(df_filtered)
-    else:
-        st.warning("⚠️ Nenhum insumo encontrado com os filtros aplicados")
-        st.info("Tente ajustar os filtros ou termo de busca")
-        
-    # Formulário para novo insumo
-    st.markdown("---")
-    st.markdown("### ➕ Cadastrar Novo Insumo")
-    
-    with st.form("novo_insumo"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            codigo = st.text_input("Código *", help="Código único do insumo")
-            descricao = st.text_input("Descrição *", help="Descrição detalhada do insumo")
-            categoria = st.selectbox("Categoria *", [
-                "Material Elétrico", "Ferragem", "Parafusos", "Produtos Químicos",
-                "Material de Limpeza", "Consumíveis", "Outros"
-            ])
-            unidade = st.selectbox("Unidade *", ["UN", "M", "KG", "L", "M²", "M³", "PC", "CX"])
-        
         with col2:
-            quantidade = st.number_input("Quantidade Inicial *", min_value=0.0, value=0.0, step=0.1)
-            quantidade_minima = st.number_input("Quantidade Mínima *", min_value=0.0, value=1.0, step=0.1)
-            preco_unitario = st.number_input("Preço Unitário (R$) *", min_value=0.0, value=0.0, step=0.01)
-            # Importar locais da obra/departamento
-            from pages.obras import LOCAIS_SUGERIDOS
-            locais_simplificados = [local.split(' - ')[1] if ' - ' in local else local for local in LOCAIS_SUGERIDOS]
-            localizacao = st.selectbox("Localização *", locais_simplificados)
+            status_filter = st.selectbox(
+                "Status do Estoque:",
+                ["Todos", "🔴 Baixo", "🟡 Atenção", "🟢 OK"],
+                key="status_filter_insumos"
+            )
         
-        observacoes = st.text_area("Observações")
+        with col3:
+            localizacao_filter = st.selectbox(
+                "Localização:",
+                ["Todas"] + list(df['localizacao'].unique()),
+                key="localizacao_filter_insumos"
+            )
         
-        submitted = st.form_submit_button("📦 Cadastrar Insumo", type="primary")
+        with col4:
+            search_term = st.text_input(
+                "Buscar:",
+                placeholder="Digite código ou descrição...",
+                key="search_insumos"
+            )
         
-        if submitted:
-            if codigo and descricao and categoria and unidade and preco_unitario > 0:
-                success = cadastrar_insumo(codigo, descricao, categoria, unidade, quantidade, quantidade_minima, preco_unitario, localizacao, observacoes)
-                if success:
-                    st.success("✅ Insumo cadastrado com sucesso!")
-                    st.rerun()
-                else:
-                    st.error("❌ Erro ao cadastrar insumo!")
-            else:
-                st.error("❌ Preencha todos os campos obrigatórios!")
+        # Aplicar filtros
+        df_filtered = df.copy()
+        
+        if categoria_filter != "Todas":
+            df_filtered = df_filtered[df_filtered['categoria'] == categoria_filter]
+        
+        if localizacao_filter != "Todas":
+            df_filtered = df_filtered[df_filtered['localizacao'] == localizacao_filter]
+        
+        if status_filter != "Todos":
+            if status_filter == "🔴 Baixo":
+                df_filtered = df_filtered[df_filtered['quantidade_atual'] <= df_filtered['quantidade_minima']]
+            elif status_filter == "🟡 Atenção":
+                df_filtered = df_filtered[
+                    (df_filtered['quantidade_atual'] > df_filtered['quantidade_minima']) &
+                    (df_filtered['quantidade_atual'] <= df_filtered['quantidade_minima'] * 1.5)
+                ]
+            elif status_filter == "🟢 OK":
+                df_filtered = df_filtered[df_filtered['quantidade_atual'] > df_filtered['quantidade_minima'] * 1.5]
+        
+        if search_term:
+            mask = (
+                df_filtered['codigo'].str.contains(search_term, case=False, na=False) |
+                df_filtered['descricao'].str.contains(search_term, case=False, na=False)
+            )
+            df_filtered = df_filtered[mask]
+        
+        st.markdown("---")
+        
+        # Tabela de insumos
+        if not df_filtered.empty:
+            st.markdown(f"### 📋 Lista de Insumos ({len(df_filtered)} encontrados)")
+            show_insumos_table(df_filtered)
+        else:
+            st.warning("⚠️ Nenhum insumo encontrado com os filtros aplicados")
+            st.info("Tente ajustar os filtros ou termo de busca")
     
-    # Informações adicionais
-    st.markdown("---")
-    st.info("""
-    💡 **Funcionalidades implementadas:**
-    - ✅ Listagem e controle de estoque
-    - ✅ Alertas de estoque baixo
-    - ✅ Filtros avançados
-    - ✅ Cadastro de novos insumos
-    - ⏳ Movimentações de entrada/saída
-    - ⏳ Relatórios de consumo
-    """)
+    with tab_create:
+        st.markdown("### ➕ Cadastrar Novo Insumo")
+        
+        with st.form("novo_insumo"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                codigo = st.text_input("Código *", help="Código único do insumo")
+                descricao = st.text_input("Descrição *", help="Descrição detalhada do insumo")
+                categoria = st.selectbox("Categoria *", [
+                    "Material Elétrico", "Ferragem", "Parafusos", "Produtos Químicos",
+                    "Material de Limpeza", "Consumíveis", "Outros"
+                ])
+                unidade = st.selectbox("Unidade *", ["UN", "M", "KG", "L", "M²", "M³", "PC", "CX"])
+            
+            with col2:
+                quantidade = st.number_input("Quantidade Inicial *", min_value=0.0, value=0.0, step=0.1)
+                quantidade_minima = st.number_input("Quantidade Mínima *", min_value=0.0, value=1.0, step=0.1)
+                preco_unitario = st.number_input("Preço Unitário (R$) *", min_value=0.0, value=0.0, step=0.01)
+                # Usar locais simplificados sem as obras
+                locais_simplificados = [
+                    "Almoxarifado Central", "Escritório Matriz", "Manutenção", "Engenharia", 
+                    "Recursos Humanos", "Galpão Principal", "Depósito Filial", "Área Externa"
+                ]
+                localizacao = st.selectbox("Localização *", locais_simplificados)
+            
+            observacoes = st.text_area("Observações")
+            
+            submitted = st.form_submit_button("📦 Cadastrar Insumo", type="primary")
+            
+            if submitted:
+                if codigo and descricao and categoria and unidade and preco_unitario > 0:
+                    success = cadastrar_insumo(codigo, descricao, categoria, unidade, quantidade, quantidade_minima, preco_unitario, localizacao, observacoes)
+                    if success:
+                        st.success("✅ Insumo cadastrado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Erro ao cadastrar insumo!")
+                else:
+                    st.error("❌ Preencha todos os campos obrigatórios!")
+    
+    with tab_manage:
+        st.markdown("### ⚙️ Gerenciar Insumos")
+        st.info("""
+        💡 **Funcionalidades disponíveis:**
+        - ✅ Listagem e controle de estoque
+        - ✅ Alertas de estoque baixo  
+        - ✅ Filtros avançados
+        - ✅ Cadastro de novos insumos
+        - ⏳ Edição e exclusão de insumos
+        - ⏳ Movimentações de entrada/saída
+        - ⏳ Relatórios de consumo
+        """)
+        
+        # Adicionar aqui futuras funcionalidades de gerenciamento
+        st.warning("🚧 Funcionalidades de edição e exclusão em desenvolvimento")
 
 if __name__ == "__main__":
     from pages import insumos

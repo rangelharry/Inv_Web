@@ -415,63 +415,63 @@ def delete_equipment(equipment_id: str) -> bool:
         return False
 
 def show_equipment_table(df: pd.DataFrame) -> None:
-    """Exibir tabela de equipamentos"""
+    """Exibir tabela de equipamentos elétricos com layout igual aos manuais"""
     if df.empty:
-        st.info("📭 Nenhum equipamento encontrado com os filtros aplicados")
+        st.warning("Nenhum equipamento elétrico encontrado")
         return
     
-    # Configurar colunas para exibição
-    df_display = df.copy()
-    
-    # Formatar dados para melhor visualização
-    df_display['Código'] = df['codigo']
-    df_display['Descrição'] = df['nome'].str[:50] + '...' if len(df) > 0 and len(df['nome'].iloc[0]) > 50 else df['nome']
-    df_display['Categoria'] = df['categoria']
-    df_display['Status'] = df['status']
-    df_display['Localização'] = df['localizacao']
-    
-    # Colunas a exibir
-    columns_to_show = ['Código', 'Descrição', 'Categoria', 'Status', 'Localização']
-    
-    # Criar colunas para tabela e ações
-    col_table, col_actions = st.columns([4, 1])
-    
-    with col_table:
-        # Exibir tabela usando HTML para evitar dependência do pyarrow
-        if not df_display.empty:
-            st.markdown("**Equipamentos Cadastrados:**")
+    # Exibir dados com ações CRUD (mesmo layout dos equipamentos manuais)
+    for idx, row in df.iterrows():
+        with st.container():
+            col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
             
-            for idx, row in df_display.iterrows():
-                with st.container():
-                    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
-                    
-                    with col1:
-                        st.markdown(f"**{row['Código']}** - {row['Descrição'][:30]}...")
-                        st.caption(f"📍 {row['Localização']}")
-                    
-                    with col2:
-                        status_color = {"Disponível": "🟢", "Em Uso": "�", "Manutenção": "�", "Inativo": "⚫"}.get(row['Status'], "⚪")
-                        st.markdown(f"{status_color} **{row['Status']}**")
-                        st.caption(f"� {row['Categoria']}")
-                    
-                    with col3:
-                        st.caption(f" {row.get('data_entrada', 'N/A')}")
-                    
-                    with col4:
-                        # Botão de movimentação rápida
-                        if st.button("🔄", key=f"move_btn_{row['Código']}", help="Movimentação Rápida"):
-                            st.session_state[f'show_move_{row["Código"]}'] = True
-                            st.rerun()
+            with col1:
+                st.markdown(f"**{row['codigo']}** - {row['nome']}")
+                st.caption(f"📍 {row['localizacao']} | 🏷️ {row['categoria'] or 'Sem categoria'}")
+            
+            with col2:
+                status_emoji = {"Disponível": "🟢", "Em Uso": "🟡", "Manutenção": "🔴", "Inativo": "⚫", "Emprestado": "🔵"}.get(row['status'], "⚪")
+                st.markdown(f"{status_emoji} **{row['status']}**")
+                if row['marca']:
+                    st.caption(f"🏭 {row['marca']}")
+            
+            with col3:
+                if row['modelo']:
+                    st.markdown(f"📋 **{row['modelo']}**")
+                if row['valor_compra']:
+                    try:
+                        valor_float = float(row['valor_compra'])
+                        st.caption(f"💰 R$ {valor_float:.2f}")
+                    except (ValueError, TypeError):
+                        st.caption(f"💰 R$ {row['valor_compra']}")
+            
+            with col4:
+                col_actions1, col_actions2, col_actions3 = st.columns(3)
+                
+                with col_actions1:
+                    if st.button("✏️", key=f"edit_{row['codigo']}", help="Editar"):
+                        st.session_state.edit_equipamento_eletrico = row['codigo']
+                        st.rerun()
+                
+                with col_actions2:
+                    if st.button("🔄", key=f"move_{row['codigo']}", help="Movimentar"):
+                        st.session_state[f'show_move_{row["codigo"]}'] = True
+                        st.rerun()
+                
+                with col_actions3:
+                    if st.button("🗑️", key=f"delete_{row['codigo']}", help="Excluir"):
+                        st.session_state.confirm_delete = row['codigo']
+                        st.rerun()
                     
                     # Formulário de movimentação rápida
-                    if st.session_state.get(f'show_move_{row["Código"]}', False):
-                        with st.form(f"move_form_{row['Código']}"):
-                            st.markdown(f"#### 🔄 Movimentar: {row['Código']}")
+                    if st.session_state.get(f'show_move_{row["codigo"]}', False):
+                        with st.form(f"move_form_{row['codigo']}"):
+                            st.markdown(f"#### 🔄 Movimentar: {row['codigo']}")
                             
                             col_origem, col_destino, col_qtd = st.columns(3)
                             
                             with col_origem:
-                                st.text_input("Origem", value=row['Localização'], disabled=True)
+                                st.text_input("Origem", value=row['localizacao'], disabled=True)
                             
                             with col_destino:
                                 # Importar locais da obra/departamento
@@ -496,15 +496,15 @@ def show_equipment_table(df: pd.DataFrame) -> None:
                                 # Registrar movimentação
                                 from pages.movimentacoes import registrar_movimentacao
                                 success = registrar_movimentacao(
-                                    row['Código'], 
-                                    row['Localização'], 
+                                    row['codigo'], 
+                                    row['localizacao'], 
                                     destino, 
                                     quantidade, 
                                     responsavel
                                 )
                                 if success:
-                                    st.success(f"✅ Movimentação de {quantidade}x {row['Código']} registrada!")
-                                    del st.session_state[f'show_move_{row["Código"]}']
+                                    st.success(f"✅ Movimentação de {quantidade}x {row['codigo']} registrada!")
+                                    del st.session_state[f'show_move_{row["codigo"]}']
                                     st.rerun()
                                 else:
                                     st.error("❌ Erro ao registrar movimentação!")
@@ -513,65 +513,35 @@ def show_equipment_table(df: pd.DataFrame) -> None:
                                 st.error("❌ Informe o responsável!")
                             
                             if cancelled:
-                                del st.session_state[f'show_move_{row["Código"]}']
+                                del st.session_state[f'show_move_{row["codigo"]}']
                                 st.rerun()
                     
                     st.markdown("---")
-        else:
-            st.info("Nenhum equipamento encontrado.")
+
+
+def show_metrics_eletricos(df):
+    """Exibir métricas dos equipamentos elétricos"""
+    if df.empty:
+        st.warning("📊 Não há dados para exibir métricas")
+        return
     
-    with col_actions:
-        st.markdown("#### Ações")
-        
-        # Seletor de equipamento para ações
-        if not df.empty:
-            selected_equipment = st.selectbox(
-                "Selecionar:",
-                options=range(len(df)),
-                format_func=lambda x: f"{df.iloc[x]['codigo']} - {df.iloc[x]['nome'][:20]}...",
-                key="equipment_selector"
-            )
-            
-            equipment_data = df.iloc[selected_equipment].to_dict()
-            
-            # Obter autenticação para verificar permissões
-            auth = get_auth()
-            
-            # Botões de ação - Layout vertical melhorado
-            st.markdown("##### 🛠️ Ações do Equipamento")
-            
-            # Botões baseados em permissões
-            if auth.has_permission('usuario'):
-                if st.button("✏️ Editar Equipamento", use_container_width=True, type="primary"):
-                    st.session_state.edit_equipment = equipment_data
-                    st.rerun()
-            else:
-                st.button("✏️ Editar Equipamento", use_container_width=True, disabled=True,
-                         help="Permissão insuficiente (necessário: usuário)")
-            
-            if auth.has_permission('visualizador'):
-                if st.button("🔄 Movimentar Equipamento", use_container_width=True):
-                    st.session_state.move_equipment = equipment_data
-                    st.rerun()
-            else:
-                st.button("🔄 Movimentar Equipamento", use_container_width=True, disabled=True,
-                         help="Permissão insuficiente (necessário: visualizador)")
-            
-            if auth.has_permission('admin'):
-                if st.button("🗑️ Excluir Equipamento", use_container_width=True, type="secondary"):
-                    if st.session_state.get('confirm_delete') != equipment_data['codigo']:
-                        st.session_state.confirm_delete = equipment_data['codigo']
-                        st.warning("⚠️ Clique novamente para confirmar exclusão")
-                    else:
-                        if delete_equipment(equipment_data['codigo']):
-                            st.success("✅ Equipamento excluído com sucesso!")
-                            del st.session_state.confirm_delete
-                            st.rerun()
-                        else:
-                            st.error("❌ Erro ao excluir equipamento!")
-            else:
-                st.button("🗑️ Excluir Equipamento", use_container_width=True, disabled=True,
-                         help="Permissão insuficiente (necessário: admin)")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total = len(df)
+        st.metric("Total de Equipamentos", total)
+    
+    with col2:
+        disponiveis = len(df[df['status'] == 'Disponível'])
+        st.metric("Disponíveis", disponiveis, f"↑ {(disponiveis/total*100):.1f}%" if total > 0 else "0%")
+    
+    with col3:
+        em_uso = len(df[df['status'] == 'Em uso'])
+        st.metric("Em Uso", em_uso, f"{(em_uso/total*100):.1f}%" if total > 0 else "0%")
+    
+    with col4:
+        manutencao = len(df[df['status'] == 'Em manutenção'])
+        st.metric("Manutenção", manutencao, f"{(manutencao/total*100):.1f}%" if total > 0 else "0%")
 
 def show():
     """Função principal da página Equipamentos Elétricos"""
@@ -582,95 +552,159 @@ def show():
         auth.show_login_page()
         return
     
-    # Verificar permissões básicas
-    if not auth.require_role('visualizador'):
-        return
+    user = auth.get_current_user()
     
-    # Header da página
     st.markdown("## ⚡ Equipamentos Elétricos")
-    st.markdown("Gestão completa de ferramentas e equipamentos elétricos")
+    st.markdown("**CRUD Completo** - Gestão de ferramentas e equipamentos elétricos")
     
-    # Controles superiores
-    col1, col2 = st.columns([3, 1])
+    # Tabs para organizar as funcionalidades
+    tab_list, tab_create, tab_manage = st.tabs(["📋 Listagem", "➕ Cadastrar", "⚙️ Gerenciar"])
     
-    with col1:
-        # Filtros
-        search_term, status_filter, category_filter, location_filter = show_equipment_filters()
-    
-    with col2:
-        st.markdown("#### Ações")
-        if auth.has_permission('usuario'):
-            if st.button("➕ Novo Equipamento", use_container_width=True, type="primary"):
-                st.session_state.show_add_form = True
-                st.rerun()
+    with tab_list:
+        # Carregar dados
+        with st.spinner("📊 Carregando equipamentos elétricos..."):
+            df = get_equipamentos_data()
+        
+        if not df.empty:
+            # Métricas
+            st.markdown("### 📊 Resumo Geral")
+            show_metrics_eletricos(df)
+            
+            st.divider()
+            
+            # Filtros
+            st.markdown("### 🔍 Filtros")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                status_filter = st.selectbox(
+                    "Status:",
+                    ["Todos"] + ["Disponível", "Em uso", "Em manutenção", "Inativo"],
+                    key="status_filter_eletricos"
+                )
+            
+            with col2:
+                categoria_filter = st.selectbox(
+                    "Categoria:",
+                    ["Todas"] + get_categories(),
+                    key="categoria_filter_eletricos"
+                )
+            
+            with col3:
+                search_term = st.text_input(
+                    "Buscar:",
+                    placeholder="Digite código, nome ou marca...",
+                    key="search_eletricos"
+                )
+            
+            # Aplicar filtros
+            df_filtered = df.copy()
+            
+            if status_filter != "Todos":
+                df_filtered = df_filtered[df_filtered['status'] == status_filter]
+            
+            if categoria_filter != "Todas":
+                df_filtered = df_filtered[df_filtered['categoria'] == categoria_filter]
+            
+            if search_term:
+                mask = (
+                    df_filtered['codigo'].str.contains(search_term, case=False, na=False) |
+                    df_filtered['nome'].str.contains(search_term, case=False, na=False) |
+                    df_filtered['marca'].str.contains(search_term, case=False, na=False)
+                )
+                df_filtered = df_filtered[mask]
+            
+            st.divider()
+            
+            # Tabela de equipamentos
+            if not df_filtered.empty:
+                st.markdown(f"### 📋 Equipamentos Elétricos ({len(df_filtered)} encontrados)")
+                show_equipment_table(df_filtered)
+            else:
+                st.warning("⚠️ Nenhum equipamento encontrado com os filtros aplicados")
+        
         else:
-            st.button("➕ Novo Equipamento", use_container_width=True, disabled=True, 
-                     help="Permissão insuficiente (necessário: usuário)")
-        
-        if st.button("📊 Relatório", use_container_width=True):
-            st.info("Funcionalidade de relatório será implementada")
+            st.warning("⚠️ Nenhum equipamento elétrico encontrado no sistema")
+            st.info("""
+            💡 **Equipamentos elétricos não encontrados**
+            
+            Para ver equipamentos elétricos nesta página:
+            - Use a aba "➕ Cadastrar" para adicionar novos equipamentos
+            - Certifique-se de que você tem permissão para visualizar estes dados
+            """)
     
-    st.markdown("---")
-    
-    # Formulário de novo equipamento
-    if st.session_state.get('show_add_form', False):
+    with tab_create:
+        # Formulário de criação
         show_equipment_form()
-        st.markdown("---")
     
-    # Formulário de edição
-    if st.session_state.get('edit_equipment'):
-        show_equipment_form(st.session_state.edit_equipment, edit_mode=True)
-        st.markdown("---")
-    
-    # Carregar e exibir dados
-    with st.spinner("⚡ Carregando equipamentos..."):
-        df = get_equipamentos_data()
-    
-    if not df.empty:
-        # Aplicar filtros
-        df_filtered = apply_filters(df, search_term, status_filter, category_filter, location_filter)
-        
-        # Exibir estatísticas
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Total de Equipamentos", len(df))
-        
-        with col2:
-            disponivel = len(df[df['status'] == 'Disponível'])
-            st.metric("Disponíveis", disponivel)
-        
-        with col3:
-            em_uso = len(df[df['status'] == 'Em Uso'])
-            st.metric("Em Uso", em_uso)
-        
-        with col4:
-            manutencao = len(df[df['status'] == 'Manutenção'])
-            st.metric("Em Manutenção", manutencao, delta_color="inverse")
-        
-        st.markdown("---")
-        
-        # Exibir tabela
-        st.markdown(f"### 📋 Lista de Equipamentos ({len(df_filtered)} encontrados)")
-        show_equipment_table(df_filtered)
-        
-    else:
-        st.warning("⚠️ Nenhum equipamento encontrado no banco de dados")
-        st.info("Use o botão 'Novo Equipamento' para adicionar o primeiro equipamento")
-    
-    # Informações sobre funcionalidades
-    st.markdown("---")
-    st.info("""
-    💡 **Funcionalidades implementadas:**
-    - ✅ Listagem completa de equipamentos elétricos
-    - ✅ Cadastro de novos equipamentos
-    - ✅ Edição e exclusão de equipamentos
-    - ✅ Filtros avançados (status, categoria, localização)
-    - ✅ Movimentação rápida com quantidade
-    - ✅ Integração com locais da Obra/Departamento
-    - ✅ Sistema de busca por código/descrição
-    - ✅ Métricas e estatísticas em tempo real
-    """)
+    with tab_manage:
+        # Verificar se há equipamento sendo editado
+        if 'edit_equipamento_eletrico' in st.session_state:
+            # Buscar equipamento no banco
+            db = DatabaseConnection()
+            equipamento_data = db.execute_query(
+                "SELECT * FROM equipamentos_eletricos WHERE codigo = ?",
+                (st.session_state['edit_equipamento_eletrico'],)
+            )
+            
+            if equipamento_data:
+                equipamento = equipamento_data[0]
+                show_equipment_form(equipment_data=equipamento, edit_mode=True)
+            else:
+                st.error("Equipamento não encontrado!")
+                st.session_state.pop('edit_equipamento_eletrico', None)
+        else:
+            st.info("✏️ **Selecione um equipamento na aba 'Listagem' para editar**")
+            
+            # Mostrar estatísticas de gestão
+            df = get_equipamentos_data()
+            if not df.empty:
+                st.markdown("### 📊 Estatísticas de Gestão")
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    total = len(df)
+                    st.metric("Total", total)
+                
+                with col2:
+                    necessitam_manutencao = len(df[df['status'] == 'Em manutenção'])
+                    st.metric("Em Manutenção", necessitam_manutencao)
+                
+                with col3:
+                    inativos = len(df[df['status'] == 'Inativo'])
+                    st.metric("Inativos", inativos)
+                
+                with col4:
+                    sem_valor = len(df[df['valor_compra'].isna() | (df['valor_compra'] == 0)])
+                    st.metric("Sem Valor", sem_valor)
+                
+                # Lista de equipamentos que precisam de atenção
+                st.markdown("### ⚠️ Equipamentos que Precisam de Atenção")
+                
+                problemas = df[
+                    (df['status'] == 'Em manutenção') | 
+                    (df['status'] == 'Inativo') |
+                    (df['valor_compra'].isna()) |
+                    (df['valor_compra'] == 0)
+                ]
+                
+                if not problemas.empty:
+                    for _, row in problemas.iterrows():
+                        alerts = []
+                        if row['status'] == 'Em manutenção':
+                            alerts.append("🔧 Em manutenção")
+                        if row['status'] == 'Inativo':
+                            alerts.append("⚠️ Inativo")
+                        if pd.isna(row['valor_compra']) or row['valor_compra'] == 0:
+                            alerts.append("💰 Sem valor definido")
+                        
+                        st.warning(f"**{row['codigo']}** - {row['nome']}: {' | '.join(alerts)}")
+                else:
+                    st.success("✅ Todos os equipamentos estão em ordem!")
+
+
 
 if __name__ == "__main__":
     from pages import equipamentos_eletricos

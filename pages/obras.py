@@ -24,13 +24,10 @@ if not check_authentication():
 LOCAIS_SUGERIDOS = [
     # Obras/Projetos
     "Obra - Residencial Vista Alegre",
-    "Obra - Edifício Comercial Centro",
+    "Obra - Edifício Comercial Centro", 
     "Obra - Shopping Mall Norte",
     "Obra - Condomínio Jardim das Flores",
     "Obra - Fábrica Zona Industrial",
-    "Obra - Hospital Regional",
-    "Obra - Escola Municipal",
-    "Obra - Ponte Rio Verde",
     
     # Departamentos Internos
     "Departamento - Almoxarifado Central",
@@ -38,29 +35,16 @@ LOCAIS_SUGERIDOS = [
     "Departamento - Manutenção",
     "Departamento - Engenharia",
     "Departamento - Recursos Humanos",
-    "Departamento - Financeiro",
-    "Departamento - Compras",
-    "Departamento - Qualidade",
-    "Departamento - Segurança do Trabalho",
-    "Departamento - TI/Informática",
-    "Departamento - Vendas",
-    "Departamento - Marketing",
     
-    # Locais Externos
+    # Outros Locais
     "Cliente - Empresa ABC Ltda",
     "Cliente - Construtora XYZ",
     "Fornecedor - Materiais São Paulo",
     "Fornecedor - Ferragens do Norte",
     "Terceirizado - Manutenção Industrial",
     "Terceirizado - Limpeza e Conservação",
-    
-    # Locais de Armazenamento
     "Estoque - Galpão Principal",
-    "Estoque - Depósito Filial",
-    "Estoque - Container Temporário",
-    "Estoque - Área Externa",
-    "Em Trânsito - Transportadora",
-    "Em Trânsito - Veículo Próprio"
+    "Estoque - Depósito Filial"
 ]
 
 def get_obras_data():
@@ -147,80 +131,57 @@ def show():
         return
     
     st.markdown(f"## 🏗️ Obra/Departamento")
-    st.markdown("Gestão de obras, departamentos e locais para movimentações")
+    st.markdown("**CRUD Completo** - Gestão de obras, departamentos e locais para movimentações")
     
-    # Seção de locais sugeridos
-    st.markdown("### 📍 Locais/Departamentos Pré-Cadastrados")
-    st.info("💡 **Sugestões de locais para movimentações** - Use estes locais nas movimentações de equipamentos e insumos:")
+    # Abas principais - igual às outras páginas
+    tab_list, tab_create, tab_manage = st.tabs(["📋 Listagem", "➕ Cadastrar", "⚙️ Gerenciar"])
     
-    # Organizar sugestões por categoria
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("**🏗️ Obras/Projetos:**")
-        obras = [local for local in LOCAIS_SUGERIDOS if local.startswith("Obra -")]
-        for obra in obras:
-            st.markdown(f"• {obra.replace('Obra - ', '')}")
-    
-    with col2:
-        st.markdown("**🏢 Departamentos:**")
-        departamentos = [local for local in LOCAIS_SUGERIDOS if local.startswith("Departamento -")]
-        for dept in departamentos[:8]:  # Limitar a 8 para não ficar muito longo
-            st.markdown(f"• {dept.replace('Departamento - ', '')}")
-    
-    with col3:
-        st.markdown("**📦 Outros Locais:**")
-        outros = [local for local in LOCAIS_SUGERIDOS if not local.startswith(("Obra -", "Departamento -"))]
-        for outro in outros[:8]:  # Limitar a 8 para não ficar muito longo
-            st.markdown(f"• {outro}")
-    
-    st.markdown("---")
-    
-    # Carregar dados
-    with st.spinner("📊 Carregando dados de obras/departamentos..."):
-        df = get_obras_data()
-    
-    if df.empty:
-        st.warning("⚠️ Nenhuma obra/departamento encontrado no sistema")
-        st.info("""
-        💡 **Obras/Departamentos não encontrados**
+    with tab_list:
+        # Carregar dados
+        with st.spinner("📊 Carregando dados de obras/departamentos..."):
+            df = get_obras_data()
         
-        Para visualizar obras/departamentos nesta página:
-        - Cadastre novos locais usando o formulário abaixo
-        - Use as sugestões pré-cadastradas acima como referência
-        - Certifique-se de que a tabela 'obras' existe no banco de dados
-        """)
-    else:
-        # Métricas básicas
-        col1, col2, col3, col4 = st.columns(4)
+        if df.empty:
+            st.warning("⚠️ Nenhuma obra/departamento encontrado no sistema")
+            st.info("""
+            💡 **Obras/Departamentos não encontrados**
+            
+            Para visualizar obras/departamentos nesta página:
+            - Cadastre novos locais usando a aba "➕ Cadastrar"
+            - Certifique-se de que a tabela 'obras' existe no banco de dados
+            """)
+        else:
+            # Métricas básicas
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Total de Locais", len(df))
+            
+            with col2:
+                ativas = len(df[df['status'] == 'ativa']) if 'status' in df.columns else 0
+                st.metric("Locais Ativos", ativas)
+            
+            with col3:
+                concluidas = len(df[df['status'] == 'concluida']) if 'status' in df.columns else 0
+                st.metric("Concluídos", concluidas)
+            
+            with col4:
+                pausadas = len(df[df['status'] == 'pausada']) if 'status' in df.columns else 0
+                st.metric("Pausados", pausadas)
+            
+            st.markdown("---")
         
-        with col1:
-            st.metric("Total de Locais", len(df))
-        
-        with col2:
-            ativas = len(df[df['status'] == 'ativa']) if 'status' in df.columns else 0
-            st.metric("Locais Ativos", ativas)
-        
-        with col3:
-            concluidas = len(df[df['status'] == 'concluida']) if 'status' in df.columns else 0
-            st.metric("Concluídos", concluidas)
-        
-        with col4:
-            pausadas = len(df[df['status'] == 'pausada']) if 'status' in df.columns else 0
-            st.metric("Pausados", pausadas)
-        
-        st.markdown("---")
-        
-        # Lista de obras/departamentos
-        st.markdown("### 📋 Lista de Obra/Departamento")
-        
-        if not df.empty:
+            # Lista de obras/departamentos
+            st.markdown("### 📋 Lista de Obra/Departamento")
+            
             for idx, row in df.iterrows():
                 with st.container():
-                    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+                    # Container principal com bordas
+                    st.markdown("---")
+                    col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
                     
                     with col1:
-                        st.markdown(f"**{row['id']}** - {row['nome']}")
+                        st.markdown(f"**#{row['id']} - {row['nome']}**")
                         st.caption(f"📝 {row['descricao']}")
                     
                     with col2:
@@ -229,12 +190,12 @@ def show():
                         st.caption(f"👤 {row['responsavel']}")
                     
                     with col3:
-                        st.markdown(f"📅 Início: {row['data_inicio']}")
-                        st.caption(f"🏁 Término: {row['data_termino']}")
+                        st.markdown(f"📅 **Início:** {row['data_inicio']}")
+                        st.caption(f"🏁 **Término:** {row['data_termino']}")
                     
                     with col4:
-                        # Botões de ação - Layout melhorado
-                        col_edit, col_delete = st.columns([1, 1])
+                        # Botões de ação organizados horizontalmente
+                        col_edit, col_delete = st.columns(2)
                         
                         with col_edit:
                             if st.button("✏️ Editar", key=f"edit_obra_{row['id']}", help="Editar obra/departamento", 
@@ -244,7 +205,7 @@ def show():
                         
                         with col_delete:
                             if st.button("🗑️ Excluir", key=f"delete_obra_{row['id']}", help="Excluir obra/departamento", 
-                                       use_container_width=True, type="secondary"):
+                                       use_container_width=True):
                                 if st.session_state.get(f'confirm_delete_obra_{row["id"]}') != row['id']:
                                     st.session_state[f'confirm_delete_obra_{row["id"]}'] = row['id']
                                     st.warning("⚠️ Clique novamente para confirmar exclusão")
@@ -332,61 +293,63 @@ def show():
                                 if cancel_edit:
                                     del st.session_state[f'edit_obra_{row["id"]}']
                                     st.rerun()
-                    
-                    st.markdown("---")
-        else:
-            st.info("Nenhuma obra encontrada.")
-    
-    # Formulário para novo local
-    st.markdown("---")
-    st.markdown("### ➕ Cadastrar Nova Obra/Departamento")
-    
-    with st.form("nova_obra"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Opção de usar sugestão ou criar novo
-            opcao = st.radio("Opção de Cadastro:", ["Usar Sugestão", "Criar Novo"], horizontal=True)
             
-            if opcao == "Usar Sugestão":
-                nome = st.selectbox("Selecionar Local Sugerido *", [""] + LOCAIS_SUGERIDOS, help="Escolha um local pré-cadastrado")
-            else:
-                nome = st.text_input("Nome da Obra/Departamento *", help="Nome identificador do local")
+            # Separador final da listagem
+            st.markdown("---")
+            st.info("💡 Use os botões **Editar** e **Excluir** para gerenciar os registros acima.")
+    
+    with tab_create:
+        st.markdown("### ➕ Cadastrar Nova Obra/Departamento")
+        
+        with st.form("nova_obra"):
+            col1, col2 = st.columns(2)
             
-            descricao = st.text_area("Descrição *", help="Descrição detalhada do local")
-            responsavel = st.text_input("Responsável *", help="Nome do responsável pelo local")
-        
-        with col2:
-            status = st.selectbox("Status *", ["ativa", "pausada", "concluida", "cancelada"])
-            data_inicio = st.date_input("Data de Início *")
-            data_termino = st.date_input("Data de Término Prevista")
-        
-        submitted = st.form_submit_button("🏗️ Cadastrar Obra/Departamento", type="primary")
-        
-        if submitted:
-            if nome and descricao and responsavel:
-                success = cadastrar_obra(nome, descricao, status, data_inicio, data_termino, responsavel)
-                if success:
-                    st.success("✅ Obra/Departamento cadastrado com sucesso!")
-                    st.rerun()
+            with col1:
+                # Opção de usar sugestão ou criar novo
+                opcao = st.radio("Opção de Cadastro:", ["Usar Sugestão", "Criar Novo"], horizontal=True)
+                
+                if opcao == "Usar Sugestão":
+                    nome = st.selectbox("Selecionar Local Sugerido *", [""] + LOCAIS_SUGERIDOS, help="Escolha um local pré-cadastrado")
                 else:
-                    st.error("❌ Erro ao cadastrar obra/departamento!")
-            else:
-                st.error("❌ Preencha todos os campos obrigatórios!")
+                    nome = st.text_input("Nome da Obra/Departamento *", help="Nome identificador do local")
+                
+                descricao = st.text_area("Descrição *", help="Descrição detalhada do local")
+                responsavel = st.text_input("Responsável *", help="Nome do responsável pelo local")
+            
+            with col2:
+                status = st.selectbox("Status *", ["ativa", "pausada", "concluida", "cancelada"])
+                data_inicio = st.date_input("Data de Início *")
+                data_termino = st.date_input("Data de Término Prevista")
+            
+            submitted = st.form_submit_button("🏗️ Cadastrar Obra/Departamento", type="primary")
+            
+            if submitted:
+                if nome and descricao and responsavel:
+                    success = cadastrar_obra(nome, descricao, status, data_inicio, data_termino, responsavel)
+                    if success:
+                        st.success("✅ Obra/Departamento cadastrado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Erro ao cadastrar obra/departamento!")
+                else:
+                    st.error("❌ Preencha todos os campos obrigatórios!")
     
-    # Informações sobre desenvolvimento
-    st.markdown("---")
-    st.info("""
-    💡 **Funcionalidades implementadas:**
-    - ✅ Listagem completa de obras/departamentos
-    - ✅ Cadastro de novas obras/departamentos
-    - ✅ **Edição inline** com formulário completo
-    - ✅ **Exclusão com confirmação** de segurança
-    - ✅ Controle de status (ativa, pausada, concluída, cancelada)
-    - ✅ **Locais pré-cadastrados** (33 sugestões organizadas)
-    - ✅ Integração com sistema de movimentações
-    - ✅ Métricas em tempo real
-    """)
+    with tab_manage:
+        st.markdown("### ⚙️ Gerenciar Obras/Departamentos")
+        st.info("""
+        💡 **Funcionalidades disponíveis:**
+        - ✅ Listagem completa de obras/departamentos
+        - ✅ Cadastro de novas obras/departamentos
+        - ✅ **Edição inline** com formulário completo
+        - ✅ **Exclusão com confirmação** de segurança
+        - ✅ Controle de status (ativa, pausada, concluída, cancelada)
+        - ✅ **Locais pré-cadastrados** (18 sugestões organizadas)
+        - ✅ Integração com sistema de movimentações
+        - ✅ Métricas em tempo real
+        """)
+        
+        # Adicionar futuras funcionalidades de gerenciamento aqui
+        st.warning("🚧 Funcionalidades avançadas de gerenciamento em desenvolvimento")
 
 if __name__ == "__main__":
     from pages import obras

@@ -11,15 +11,15 @@ from typing import Dict, List, Optional
 import hashlib
 import json
 
+# Inicialização global do session_state para rate limiting
+if 'rate_limit_data' not in st.session_state:
+    st.session_state.rate_limit_data = {}
+
 class RateLimiter:
     """Sistema de rate limiting para prevenir ataques de força bruta"""
     
     def __init__(self):
         """Inicializar rate limiter"""
-        # Usar session_state para persistir dados entre requests
-        if 'rate_limit_data' not in st.session_state:
-            st.session_state.rate_limit_data = {}
-        
         # Configurações
         self.MAX_ATTEMPTS = 5  # Máximo de tentativas
         self.WINDOW_MINUTES = 1  # Janela de tempo em minutos

@@ -498,9 +498,12 @@ def show():
         with col1:
             codigo_item = st.text_input("Código do Item *", help="Código do equipamento ou insumo")
             
-            # Importar locais da obra/departamento
-            from pages.obras import LOCAIS_SUGERIDOS
-            locais_simplificados = [local.split(' - ')[1] if ' - ' in local else local for local in LOCAIS_SUGERIDOS]
+            # Locais simplificados sem referência às obras
+            locais_simplificados = [
+                "Almoxarifado Central", "Escritório Matriz", "Manutenção", "Engenharia", 
+                "Recursos Humanos", "Galpão Principal", "Depósito Filial", "Área Externa",
+                "Obra Principal", "Cliente Externo", "Fornecedor", "Em Trânsito"
+            ]
             
             origem = st.selectbox("Origem *", locais_simplificados, help="Local de origem do item")
             quantidade = st.number_input("Quantidade *", min_value=1, value=1)

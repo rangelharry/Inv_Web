@@ -60,7 +60,7 @@ class FeedbackManager:
                 <div style="
                     text-align: center;
                     padding: 2rem;
-                    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+                    background: #f8f9fa;
                     border-radius: 15px;
                     border: 2px dashed #6c757d;
                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -257,7 +257,7 @@ class FeedbackManager:
                 box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
             ">
                 <div style="
-                    background: linear-gradient(90deg, {color}, {color}dd);
+                    background: {color};
                     height: 100%;
                     width: {percentage}%;
                     border-radius: 10px;
@@ -271,7 +271,7 @@ class FeedbackManager:
                         left: 0;
                         width: 100%;
                         height: 100%;
-                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                        background: rgba(255,255,255,0.3);
                         animation: shimmer 2s infinite;
                     "></div>
                 </div>
@@ -304,7 +304,7 @@ class FeedbackManager:
             <div style="
                 text-align: center;
                 padding: 2rem;
-                background: linear-gradient(135deg, #d4edda, #c3e6cb);
+                background: #d4edda;
                 border-radius: 15px;
                 border: 2px solid #28a745;
                 box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
@@ -354,7 +354,7 @@ class FeedbackManager:
             <div style="
                 text-align: center;
                 padding: 2rem;
-                background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+                background: #f8d7da;
                 border-radius: 15px;
                 border: 2px solid #dc3545;
                 box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);

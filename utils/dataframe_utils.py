@@ -24,48 +24,36 @@ def safe_dataframe(
         **kwargs: Argumentos adicionais
     """
     try:
-        # Tentar com st.dataframe primeiro (mais rápido se funcionar)
-        if height is not None:
-            st.dataframe(
-                data, 
-                use_container_width=use_container_width,
-                height=height
-            )
-        else:
-            st.dataframe(
-                data, 
-                use_container_width=use_container_width
-            )
-    except Exception as e:
-        # Se falhar, usar método alternativo
-        if "pyarrow" in str(e).lower():
-            st.warning("⚠️ Usando visualização alternativa (PyArrow não disponível)")
+        # Usar st.table como alternativa mais simples e compatível
+        if data.empty:
+            st.info("📭 Nenhum registro encontrado")
+            return
             
-            # Mostrar informações básicas
-            if not data.empty:
-                st.info(f"📊 **{len(data)} registros encontrados** | **{len(data.columns)} colunas**")
-                
-                # Mostrar as primeiras 10 linhas em formato de tabela HTML
-                if len(data) > 10:
-                    st.markdown("**Primeiras 10 linhas:**")
-                    st.write(data.head(10).to_html(escape=False, index=False), unsafe_allow_html=True)
-                    
-                    # Opção para mostrar mais
-                    if st.button("📋 Mostrar todos os registros"):
-                        st.write(data.to_html(escape=False, index=False), unsafe_allow_html=True)
-                else:
-                    st.write(data.to_html(escape=False, index=False), unsafe_allow_html=True)
-                    
-                # Estatísticas básicas para colunas numéricas
-                numeric_cols = data.select_dtypes(include=['number']).columns
-                if len(numeric_cols) > 0:
-                    with st.expander("📈 Estatísticas Resumidas"):
-                        st.dataframe(data[numeric_cols].describe(), use_container_width=True)
-            else:
-                st.info("📭 Nenhum registro encontrado")
+        # Mostrar informações básicas
+        st.info(f"📊 **{len(data)} registros** | **{len(data.columns)} colunas**")
+        
+        # Para datasets grandes, mostrar amostra
+        if len(data) > 20:
+            st.table(data.head(20))
+            if st.button("📋 Mostrar todos os registros"):
+                st.table(data)
         else:
-            # Outro erro - repassar
-            raise e
+            st.table(data)
+            
+    except Exception as e:
+        # Fallback final: mostrar dados como texto
+        st.warning(f"⚠️ Usando visualização básica: {e}")
+        
+        if not data.empty:
+            st.text(f"Registros: {len(data)} | Colunas: {', '.join(data.columns)}")
+            
+            # Mostrar primeiras 5 linhas como texto
+            for i, (idx, row) in enumerate(data.head(5).iterrows()):
+                with st.expander(f"Registro {i + 1}"):
+                    for col, val in row.items():
+                        st.text(f"{col}: {val}")
+        else:
+            st.info("📭 Nenhum registro encontrado")
 
 def safe_metric_display(
     data: Dict[str, Any], 
@@ -130,29 +118,26 @@ def safe_chart_display(
                 chart_data = data.set_index(x_col)[y_col]
             else:
                 chart_data = data.iloc[:, 0] if len(data.columns) > 0 else data
-            st.bar_chart(chart_data, use_container_width=True)
+            # Simplificar: mostrar dados como tabela
+            st.info(f"📊 Dados do gráfico de barras")
+            safe_dataframe(data)
             
         elif chart_type == "line":
-            if x_col and y_col:
-                chart_data = data.set_index(x_col)[y_col]
-            else:
-                chart_data = data.iloc[:, 0] if len(data.columns) > 0 else data
-            st.line_chart(chart_data, use_container_width=True)
+            st.info(f"📈 Dados do gráfico de linha")
+            safe_dataframe(data)
             
         elif chart_type == "area":
-            if x_col and y_col:
-                chart_data = data.set_index(x_col)[y_col]
-            else:
-                chart_data = data.iloc[:, 0] if len(data.columns) > 0 else data
-            st.area_chart(chart_data, use_container_width=True)
+            st.info(f"📊 Dados do gráfico de área")
+            safe_dataframe(data)
             
         else:
             st.warning(f"⚠️ Tipo de gráfico '{chart_type}' não suportado")
+            safe_dataframe(data)
             
     except Exception as e:
-        st.error(f"❌ Erro ao criar gráfico: {e}")
-        # Mostrar dados em tabela como fallback
-        safe_dataframe(data.head(10), height=300)
+        st.error(f"❌ Erro ao processar dados: {e}")
+        # Mostrar apenas informações básicas
+        st.text(f"Dados: {len(data)} registros, {len(data.columns) if hasattr(data, 'columns') else 0} colunas")
 
 def format_currency(value: Any) -> str:
     """

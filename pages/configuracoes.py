@@ -13,7 +13,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from utils.auth import get_auth, check_authentication
-from database.connection import DatabaseConnection
+from database.connection import DatabaseConnection, get_database
 from utils.backup import get_backup_manager
 from utils.themes import get_theme_manager
 from utils.feedback import get_feedback_manager, NotificationType
@@ -32,11 +32,17 @@ def show_change_password_form():
     with st.form("change_password_form"):
         st.markdown("#### 🔑 Alterar Senha")
         
-        current_password = st.text_input("Senha Atual", type="password")
-        new_password = st.text_input("Nova Senha", type="password")
-        confirm_password = st.text_input("Confirmar Nova Senha", type="password")
+        current_password = st.text_input("Senha Atual", type="password", help="Digite sua senha atual")
+        new_password = st.text_input("Nova Senha", type="password", help="Mínimo 6 caracteres")
+        confirm_password = st.text_input("Confirmar Nova Senha", type="password", help="Digite a nova senha novamente")
         
-        submitted = st.form_submit_button("Alterar Senha", use_container_width=True)
+        col_submit, col_cancel = st.columns(2)
+        
+        with col_submit:
+            submitted = st.form_submit_button("🔑 Alterar Senha", use_container_width=True, type="primary")
+        
+        with col_cancel:
+            cancelled = st.form_submit_button("❌ Cancelar", use_container_width=True)
         
         if submitted:
             if not current_password or not new_password or not confirm_password:
@@ -55,31 +61,54 @@ def show_change_password_form():
             auth = get_auth()
             user = auth.get_current_user()
             
-            if user:
-                db = DatabaseConnection()
+            if not user or 'id' not in user:
+                st.error("⚠️ Erro ao identificar usuário")
+                return
+            
+            try:
+                db = get_database()
                 
-                # Verificar senha atual
-                current_hash = hash_password(current_password)
+                # Buscar hash atual da senha no banco
                 result = db.execute_query(
-                    "SELECT id FROM usuarios WHERE id = ? AND senha = ?",
-                    (user['id'], current_hash)
+                    "SELECT senha_hash FROM usuarios WHERE id = ?",
+                    (user['id'],)
                 )
                 
-                if result:
-                    # Atualizar senha
-                    new_hash = hash_password(new_password)
+                if not result:
+                    st.error("⚠️ Usuário não encontrado")
+                    return
+                
+                stored_hash = result[0]['senha_hash']
+                
+                # Verificar senha atual usando bcrypt
+                if auth.verify_password(current_password, stored_hash):
+                    # Senha atual está correta, criar hash da nova
+                    new_hash = auth.hash_password(new_password)
+                    
+                    # Atualizar no banco
                     success = db.execute_update(
-                        "UPDATE usuarios SET senha = ? WHERE id = ?",
+                        "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
                         (new_hash, user['id'])
                     )
+                    
                     if success:
                         st.success("✅ Senha alterada com sucesso!")
+                        st.info("💡 Use a nova senha no próximo login")
+                        
+                        # Opcional: forçar logout para usar nova senha
+                        if st.button("🚪 Fazer Logout Agora", key="logout_after_password_change"):
+                            auth.logout_user()
+                            st.rerun()
                     else:
-                        st.error("❌ Erro ao alterar senha")
+                        st.error("❌ Erro ao alterar senha no banco de dados")
                 else:
                     st.error("⚠️ Senha atual incorreta")
-            else:
-                st.error("⚠️ Erro ao identificar usuário")
+                    
+            except Exception as e:
+                st.error(f"❌ Erro ao alterar senha: {e}")
+        
+        if cancelled:
+            st.rerun()
 
 def show_activity_log():
     """Mostra log de atividades do usuário"""
@@ -138,24 +167,159 @@ def show():
     st.markdown("Configurações gerais e preferências do usuário")
     
     # Seções de configurações
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["👤 Perfil", "🎨 Aparência", "🔧 Sistema", "🔒 Segurança", "📊 Relatórios", "💾 Backup"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["👤 Perfil", "🎨 Aparência", "🔧 Sistema", "🔒 Segurança", "👥 Usuários", "📊 Relatórios", "💾 Backup"])
     
     with tab1:
         st.markdown("### 👤 Informações do Perfil")
         
-        col1, col2 = st.columns(2)
+        # Modo de visualização vs edição
+        if "edit_profile" not in st.session_state:
+            st.session_state.edit_profile = False
         
-        with col1:
-            st.text_input("Nome", value=user['nome'] if user else "", disabled=True)
-            st.text_input("Usuário", value=user['usuario'] if user else "", disabled=True)
+        col_header1, col_header2 = st.columns([3, 1])
         
-        with col2:
-            st.text_input("Tipo de Usuário", value="Administrador", disabled=True)
-            if user and 'ultimo_acesso' in user:
-                st.text_input("Último Acesso", value=user['ultimo_acesso'], disabled=True)
+        with col_header1:
+            st.markdown("#### 📋 Dados Pessoais")
+        
+        with col_header2:
+            if st.button("✏️ Editar" if not st.session_state.edit_profile else "👁️ Visualizar", 
+                        use_container_width=True, type="primary"):
+                st.session_state.edit_profile = not st.session_state.edit_profile
+                st.rerun()
+        
+        if st.session_state.edit_profile:
+            # Modo de Edição
+            with st.form("edit_profile_form"):
+                st.markdown("##### ✏️ Editando Perfil")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    novo_nome = st.text_input("Nome Completo", value=user['nome'] if user else "", 
+                                            help="Digite seu nome completo")
+                    novo_email = st.text_input("Email", value=user.get('email', '') if user else "", 
+                                             help="Seu endereço de email")
+                
+                with col2:
+                    st.text_input("Usuário", value=user['usuario'] if user else "", disabled=True,
+                                help="Nome de usuário não pode ser alterado")
+                    st.text_input("Tipo de Usuário", value=user.get('role', 'usuario').title() if user else "", 
+                                disabled=True, help="Tipo de usuário definido pelo administrador")
+                
+                # Botões de ação
+                col_save, col_cancel = st.columns(2)
+                
+                with col_save:
+                    submitted = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
+                
+                with col_cancel:
+                    cancelled = st.form_submit_button("❌ Cancelar", use_container_width=True)
+                
+                if submitted:
+                    if not novo_nome.strip():
+                        st.error("❌ O nome é obrigatório!")
+                    elif not novo_email.strip():
+                        st.error("❌ O email é obrigatório!")
+                    else:
+                        try:
+                            # Validar email básico
+                            import re
+                            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                            if not re.match(email_pattern, novo_email):
+                                st.error("❌ Email inválido!")
+                                st.stop()
+                            
+                            # Verificar se usuário está logado
+                            if not user or 'id' not in user:
+                                st.error("❌ Erro: usuário não identificado!")
+                                st.stop()
+                            
+                            # Atualizar no banco de dados
+                            db = get_database()
+                            success = db.execute_update("""
+                                UPDATE usuarios 
+                                SET nome = ?, email = ?
+                                WHERE id = ?
+                            """, (novo_nome.strip(), novo_email.strip(), user['id']))
+                            
+                            if success:
+                                # Atualizar dados do usuário na sessão
+                                if 'user_data' in st.session_state:
+                                    st.session_state.user_data['nome'] = novo_nome.strip()
+                                    st.session_state.user_data['email'] = novo_email.strip()
+                                
+                                feedback_manager = get_feedback_manager()
+                                feedback_manager.show_notification("✅ Perfil atualizado com sucesso!", NotificationType.SUCCESS)
+                                st.session_state.edit_profile = False
+                                st.rerun()
+                            else:
+                                st.error("❌ Erro ao salvar alterações!")
+                        except Exception as e:
+                            st.error(f"❌ Erro ao atualizar perfil: {e}")
+                
+                if cancelled:
+                    st.session_state.edit_profile = False
+                    st.rerun()
+        else:
+            # Modo de Visualização
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.text_input("Nome Completo", value=user['nome'] if user else "", disabled=True)
+                st.text_input("Email", value=user.get('email', 'Não informado') if user else "", disabled=True)
+            
+            with col2:
+                st.text_input("Usuário", value=user['usuario'] if user else "", disabled=True)
+                st.text_input("Tipo de Usuário", value=user.get('role', 'usuario').title() if user else "", disabled=True)
+            
+            # Informações adicionais
+            col3, col4 = st.columns(2)
+            
+            with col3:
+                if user and 'ultimo_acesso' in user and user['ultimo_acesso']:
+                    st.text_input("Último Acesso", value=user['ultimo_acesso'], disabled=True)
+                else:
+                    st.text_input("Último Acesso", value="Primeiro acesso", disabled=True)
+            
+            with col4:
+                if user and 'data_criacao' in user and user['data_criacao']:
+                    st.text_input("Conta Criada", value=user['data_criacao'][:10], disabled=True)
+                else:
+                    st.text_input("Conta Criada", value="Não informado", disabled=True)
         
         st.markdown("---")
-        st.info("Para alterar informações do perfil, entre em contato com o administrador do sistema.")
+        
+        # Seção de alteração de senha
+        st.markdown("#### 🔑 Alterar Senha")
+        
+        if st.button("🔑 Alterar Minha Senha", use_container_width=True, type="secondary"):
+            show_change_password_form()
+        
+        st.markdown("---")
+        
+        # Informações de segurança
+        st.markdown("#### 🛡️ Informações de Segurança")
+        
+        col_sec1, col_sec2 = st.columns(2)
+        
+        with col_sec1:
+            tentativas = user.get('tentativas_login', 0) if user else 0
+            cor_tentativas = "🟢" if tentativas == 0 else "🟡" if tentativas < 3 else "🔴"
+            st.info(f"{cor_tentativas} **Tentativas de Login:** {tentativas}/5")
+        
+        with col_sec2:
+            status_conta = "🟢 Ativa" if user and user.get('ativo') else "🔴 Inativa"
+            st.info(f"**Status da Conta:** {status_conta}")
+        
+        # Dicas de segurança
+        st.markdown("---")
+        st.success("""
+        💡 **Dicas de Segurança:**
+        - ✅ Mantenha seus dados atualizados
+        - 🔑 Use senhas fortes e únicas
+        - 🚪 Sempre faça logout ao sair
+        - 📧 Verifique regularmente seu email cadastrado
+        """)
     
     with tab2:
         st.markdown("### 🎨 Personalização de Aparência")
@@ -378,7 +542,178 @@ def show():
             st.checkbox("Receber Alertas por Email", value=True, disabled=True)
         
         st.markdown("---")
-        st.warning("⚠️ Configurações de relatórios estão em desenvolvimento")
+        st.warning("⚠️ Configurações de segurança estão em desenvolvimento")
+    
+    with tab5:
+        st.markdown("### 👥 Gerenciamento de Usuários")
+        
+        # Verificar se é admin de forma mais flexível
+        user_role = auth.get_user_role()
+        current_user = auth.get_current_user()
+        
+        st.info(f"🔍 **Debug Info:** Usuário atual: {current_user.get('usuario', 'N/A') if current_user else 'N/A'} | Role: {user_role}")
+        
+        # Permitir acesso se for admin ou se for o primeiro acesso (para configuração inicial)
+        is_admin = (user_role == 'admin') or (current_user and current_user.get('usuario') == 'admin')
+        
+        if not is_admin:
+            st.warning("⛔ Acesso restrito a administradores")
+            st.info("💡 Para gerenciar usuários, faça login com uma conta de administrador.")
+            
+            # Mostrar informações do usuário atual
+            if current_user:
+                st.markdown("#### 👤 Suas Informações")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.text_input("Usuário", value=current_user.get('usuario', ''), disabled=True)
+                    st.text_input("Nome", value=current_user.get('nome', ''), disabled=True)
+                with col2:
+                    st.text_input("Role", value=current_user.get('role', ''), disabled=True)
+                    st.text_input("Status", value="Ativo" if current_user.get('ativo') else "Inativo", disabled=True)
+            return
+        
+        # Seção de usuários
+        st.markdown("#### 🔍 Usuários do Sistema")
+        
+        # Carregar usuários reais do banco de dados
+        try:
+            db = get_database()
+            usuarios = db.execute_query("SELECT id, usuario, nome, role, ativo FROM usuarios ORDER BY usuario")
+            
+            if not usuarios:
+                usuarios = [
+                    {"id": 1, "usuario": "admin", "nome": "Administrador", "role": "admin", "ativo": True}
+                ]
+                st.info("⚠️ Nenhum usuário encontrado no banco. Usando dados padrão.")
+        except Exception as e:
+            st.error(f"Erro ao carregar usuários: {e}")
+            usuarios = [
+                {"id": 1, "usuario": "admin", "nome": "Administrador", "role": "admin", "ativo": True}
+            ]
+        
+        # Filtros
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            filtro_tipo = st.selectbox("Filtrar por Tipo", ["Todos", "admin", "usuario", "visualizador"])
+        with col2:
+            filtro_status = st.selectbox("Filtrar por Status", ["Todos", "Ativo", "Inativo"])
+        with col3:
+            busca_nome = st.text_input("Buscar por Nome")
+        
+        # Lista de usuários
+        for usuario in usuarios:
+            # Aplicar filtros
+            if filtro_tipo != "Todos" and usuario.get("role", "usuario") != filtro_tipo:
+                continue
+            if filtro_status == "Ativo" and not usuario.get("ativo", True):
+                continue
+            if filtro_status == "Inativo" and usuario.get("ativo", True):
+                continue
+            if busca_nome and busca_nome.lower() not in usuario.get("nome", "").lower():
+                continue
+            
+            with st.expander(f"👤 {usuario.get('nome', 'N/A')} ({usuario.get('usuario', 'N/A')})"):
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    novo_nome = st.text_input("Nome", value=usuario.get("nome", ""), key=f"nome_{usuario.get('id', 0)}")
+                
+                with col2:
+                    novo_tipo = st.selectbox("Tipo", ["admin", "usuario", "visualizador"], 
+                               index=["admin", "usuario", "visualizador"].index(usuario.get("role", "usuario")), 
+                               key=f"tipo_{usuario.get('id', 0)}")
+                
+                with col3:
+                    novo_status = st.checkbox("Ativo", value=usuario.get("ativo", True), key=f"ativo_{usuario.get('id', 0)}")
+                
+                with col4:
+                    col_save, col_delete = st.columns(2)
+                    
+                    with col_save:
+                        if st.button("💾 Salvar", key=f"salvar_{usuario.get('id', 0)}", use_container_width=True):
+                            try:
+                                # Atualizar no banco de dados
+                                db = get_database()
+                                success = db.execute_update("""
+                                    UPDATE usuarios 
+                                    SET nome = ?, role = ?, ativo = ?
+                                    WHERE id = ?
+                                """, (novo_nome, novo_tipo, novo_status, usuario['id']))
+                                
+                                if success:
+                                    feedback_manager = get_feedback_manager()
+                                    feedback_manager.show_notification(f"✅ Usuário {novo_nome} atualizado!", NotificationType.SUCCESS)
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Erro ao salvar alterações!")
+                            except Exception as e:
+                                st.error(f"❌ Erro: {e}")
+                    
+                    with col_delete:
+                        if st.button("🗑️ Excluir", key=f"excluir_{usuario.get('id', 0)}", use_container_width=True, type="secondary"):
+                            if usuario.get("role") != "admin":  # Não permitir excluir admin
+                                try:
+                                    db = get_database()
+                                    success = db.execute_update("DELETE FROM usuarios WHERE id = ?", (usuario['id'],))
+                                    
+                                    if success:
+                                        feedback_manager = get_feedback_manager()
+                                        feedback_manager.show_notification(f"🗑️ Usuário {usuario.get('nome')} removido!", NotificationType.WARNING)
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Erro ao excluir usuário!")
+                                except Exception as e:
+                                    st.error(f"❌ Erro: {e}")
+                            else:
+                                st.error("❌ Não é possível excluir o administrador!")
+        
+        st.markdown("---")
+        
+        # Adicionar novo usuário
+        st.markdown("#### ➕ Adicionar Novo Usuário")
+        
+        with st.form("novo_usuario"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                novo_nome = st.text_input("Nome Completo")
+                novo_usuario = st.text_input("Nome de Usuário")
+            
+            with col2:
+                novo_tipo = st.selectbox("Tipo de Usuário", ["usuario", "admin", "visualizador"])
+                nova_senha = st.text_input("Senha Temporária", type="password")
+            
+            if st.form_submit_button("➕ Criar Usuário", use_container_width=True):
+                if novo_nome and novo_usuario and nova_senha:
+                    try:
+                        # Verificar se usuário já existe
+                        db = get_database()
+                        existing = db.execute_query("SELECT id FROM usuarios WHERE usuario = ?", (novo_usuario,))
+                        
+                        if existing:
+                            st.error(f"❌ Usuário '{novo_usuario}' já existe!")
+                        else:
+                            # Criar hash da senha
+                            auth = get_auth()
+                            senha_hash = auth.hash_password(nova_senha)
+                            
+                            # Inserir novo usuário
+                            success = db.execute_update("""
+                                INSERT INTO usuarios (usuario, nome, senha, role, ativo)
+                                VALUES (?, ?, ?, ?, ?)
+                            """, (novo_usuario, novo_nome, senha_hash, novo_tipo, True))
+                            
+                            if success:
+                                feedback_manager = get_feedback_manager()
+                                feedback_manager.show_notification(f"✅ Usuário {novo_nome} criado com sucesso!", NotificationType.SUCCESS)
+                                st.info("💡 O usuário receberá instruções para alterar a senha no primeiro acesso.")
+                                st.rerun()
+                            else:
+                                st.error("❌ Erro ao criar usuário!")
+                    except Exception as e:
+                        st.error(f"❌ Erro ao criar usuário: {e}")
+                else:
+                    st.error("❌ Preencha todos os campos obrigatórios!")
     
     # Informações do sistema
     st.markdown("---")
@@ -411,7 +746,26 @@ def show():
         """)
     
     with tab6:
-        st.markdown("### 💾 Sistema de Backup")
+        st.markdown("### � Relatórios")
+        
+        # Configurações de relatórios
+        st.markdown("#### 📋 Configurações de Relatórios")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.text_input("Formato Padrão", value="PDF", disabled=True, key="formato_relatorio")
+            st.selectbox("Frequência de Geração", ["Manual", "Diário", "Semanal", "Mensal"], disabled=True, key="freq_relatorio")
+        
+        with col2:
+            st.text_input("Email para Relatórios", placeholder="seu@email.com", disabled=True, key="email_relatorio")
+            st.checkbox("Receber Alertas por Email", value=True, disabled=True, key="alertas_relatorio")
+        
+        st.markdown("---")
+        st.warning("⚠️ Configurações de relatórios estão em desenvolvimento")
+    
+    with tab7:
+        st.markdown("### �💾 Sistema de Backup")
         
         # Verificar se é admin
         if not auth.has_permission('admin'):

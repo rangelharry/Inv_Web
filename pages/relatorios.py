@@ -97,7 +97,7 @@ class AdvancedReportsManager:
                         ELSE 'Desconhecido'
                     END as tipo_item,
                     CASE 
-                        WHEN ee.codigo IS NOT NULL THEN ee.descricao
+                        WHEN ee.codigo IS NOT NULL THEN ee.nome
                         WHEN em.codigo IS NOT NULL THEN em.descricao
                         WHEN i.codigo IS NOT NULL THEN i.descricao
                         ELSE 'Item não encontrado'

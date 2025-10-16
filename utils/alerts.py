@@ -138,7 +138,7 @@ class AlertSystem:
             
             # Equipamentos elétricos em manutenção
             query_ee = """
-                SELECT codigo, descricao, localizacao, 'Equipamento Elétrico' as tipo
+                SELECT codigo, nome as descricao, localizacao, 'Equipamento Elétrico' as tipo
                 FROM equipamentos_eletricos 
                 WHERE status = 'Manutenção'
                 ORDER BY codigo
