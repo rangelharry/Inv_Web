@@ -370,68 +370,45 @@ def show_movimentacoes_relatorio():
 def show():
     """Função principal da página Relatórios"""
     
-    # DEBUG temporário
-    st.write("🔍 DEBUG: Página relatorios_backup carregada!")
+    st.title("🔍 TESTE: Página Relatórios Backup")
+    st.write("Se você está vendo esta mensagem, a página está funcionando!")
     
-    # Verificar autenticação
-    auth = get_auth()
-    if not auth.is_authenticated():
-        st.write("🔍 DEBUG: Usuário não autenticado!")
-        auth.show_login_page()
-        return
-    
-    st.write("🔍 DEBUG: Usuário autenticado!")
-    
-    st.markdown(f"## 📈 Relatórios Backup")
-    st.markdown("Relatórios gerenciais e operacionais de backup")
-    
-    # Verificar permissões (relatórios precisam de pelo menos papel de visualizador)
-    if not auth.require_role('visualizador'):
-        st.write("🔍 DEBUG: Usuário sem permissão de visualizador!")
-        return
-    
-    st.write("🔍 DEBUG: Usuário tem permissões adequadas!")
-    
-    # Seções de relatórios
-    st.write("🔍 DEBUG: Criando abas...")
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Inventário", "📋 Movimentações", "💰 Financeiro", "🛠️ Sistema"])
-    
-    with tab1:
-        st.write("🔍 DEBUG: Dentro da aba Inventário!")
-        st.markdown("### 📊 Relatórios de Inventário")
+    try:
+        # Verificar autenticação
+        auth = get_auth()
+        if not auth.is_authenticated():
+            st.error("❌ Usuário não autenticado!")
+            auth.show_login_page()
+            return
         
-        col1, col2 = st.columns(2)
+        st.success("✅ Usuário autenticado!")
         
-        with col1:
-            st.write("🔍 DEBUG: Criando botão Inventário Completo...")
-            if st.button("📄 Inventário Completo", use_container_width=True, type="primary"):
-                st.write("🔍 DEBUG: Botão clicado!")
-                st.session_state.show_inventario_completo = True
-            
-            if st.button("⚡ Equipamentos Elétricos", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-            
-            if st.button("🔧 Equipamentos Manuais", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
+        # Verificar permissões 
+        if not auth.require_role('visualizador'):
+            st.error("❌ Usuário sem permissão!")
+            return
         
-        with col2:
-            if st.button("📦 Estoque de Insumos", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-            
-            if st.button("⚠️ Alertas de Estoque", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
-            
-            if st.button("📊 Status dos Equipamentos", use_container_width=True):
-                st.info("📝 Relatório específico em desenvolvimento...")
+        st.success("✅ Permissões OK!")
         
-        # Mostrar relatório se solicitado
-        st.write(f"🔍 DEBUG: Estado da sessão show_inventario_completo: {st.session_state.get('show_inventario_completo', False)}")
-        if st.session_state.get('show_inventario_completo', False):
-            st.write("🔍 DEBUG: Mostrando relatório de inventário completo!")
-            st.markdown("---")
-            show_inventario_completo()
-            if st.button("🔙 Voltar aos Relatórios"):
-                st.session_state.show_inventario_completo = False
+        # Teste simples de botão
+        if st.button("🧪 TESTE: Carregar Dados", type="primary"):
+            st.success("✅ Botão funcionou!")
+            
+            # Teste simples de consulta
+            try:
+                db = get_database()
+                result = db.execute_query("SELECT COUNT(*) as total FROM equipamentos_eletricos")
+                if result:
+                    st.info(f"📊 Equipamentos elétricos no banco: {result[0]['total']}")
+                else:
+                    st.warning("⚠️ Consulta retornou vazio")
+            except Exception as e:
+                st.error(f"❌ Erro na consulta: {e}")
+        
+    except Exception as e:
+        st.error(f"❌ ERRO GERAL: {e}")
+        import traceback
+        st.code(traceback.format_exc())
     
     with tab2:
         st.markdown("### 📋 Relatórios de Movimentação")
