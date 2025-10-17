@@ -48,6 +48,18 @@ def safe_plotly_chart(chart_func, *args, **kwargs):
     else:
         return None
 
+def safe_dataframe(df, use_container_width=True, **kwargs):
+    """Função segura para exibir dataframe com fallback"""
+    try:
+        st.dataframe(df, use_container_width=use_container_width, **kwargs)
+    except Exception as e:
+        # Fallback para exibição alternativa
+        st.markdown("**📊 Dados:**")
+        if hasattr(df, 'to_string'):
+            st.text(df.to_string())
+        else:
+            st.write(df)
+
 def show_chart_or_table(fig, df, title="Dados"):
     """Mostrar gráfico se disponível, senão mostrar tabela"""
     if fig is not None and PLOTLY_AVAILABLE:
@@ -55,7 +67,15 @@ def show_chart_or_table(fig, df, title="Dados"):
     else:
         st.markdown(f"#### 📊 {title}")
         if not df.empty:
-            st.dataframe(df, use_container_width=True)
+            try:
+                st.dataframe(df, use_container_width=True)
+            except Exception as e:
+                # Fallback para exibição simples se dataframe falhar
+                st.markdown("**Dados:**")
+                if hasattr(df, 'to_string'):
+                    st.text(df.to_string())
+                else:
+                    st.write(df)
         else:
             st.info("Nenhum dado disponível para exibir")
 
@@ -226,17 +246,26 @@ class AdvancedReportsManager:
         if df_inventario.empty:
             return None
         
+        if not PLOTLY_AVAILABLE:
+            return None
+        
         loc_counts = df_inventario['localizacao'].value_counts().head(10)
         
-        fig = px.bar(
-            x=loc_counts.values,
-            y=loc_counts.index,
-            orientation='h',
-            title="Top 10 Localizações",
-            labels={'x': 'Quantidade', 'y': 'Localização'},
-            color=loc_counts.values,
-            color_continuous_scale='blues'
-        )
+        try:
+            fig = px.bar(
+                x=loc_counts.values,
+                y=loc_counts.index,
+                orientation='h',
+                title="Top 10 Localizações",
+                labels={'x': 'Quantidade', 'y': 'Localização'},
+                color=loc_counts.values,
+                color_continuous_scale='blues'
+            )
+        except NameError:
+            return None
+        except Exception as e:
+            logger.log_action("error", f"Erro ao criar gráfico de localização: {e}")
+            return None
         
         fig.update_layout(height=400, showlegend=False)
         
@@ -247,42 +276,56 @@ class AdvancedReportsManager:
         if df_movimentacoes.empty:
             return None
         
-        # Converter data para datetime
-        df_movimentacoes['data_movimentacao'] = pd.to_datetime(df_movimentacoes['data_movimentacao'])
+        if not PLOTLY_AVAILABLE:
+            return None
         
-        # Agrupar por dia
-        daily_counts = df_movimentacoes.groupby(df_movimentacoes['data_movimentacao'].dt.date).size()
-        
-        fig = px.line(
-            x=daily_counts.index,
-            y=daily_counts.values,
-            title="Movimentações ao Longo do Tempo",
-            labels={'x': 'Data', 'y': 'Número de Movimentações'}
-        )
-        
-        fig.update_layout(height=400)
-        
-        return fig
+        try:
+            # Converter data para datetime
+            df_movimentacoes['data_movimentacao'] = pd.to_datetime(df_movimentacoes['data_movimentacao'])
+            
+            # Agrupar por dia
+            daily_counts = df_movimentacoes.groupby(df_movimentacoes['data_movimentacao'].dt.date).size()
+            
+            fig = px.line(
+                x=daily_counts.index,
+                y=daily_counts.values,
+                title="Movimentações ao Longo do Tempo",
+                labels={'x': 'Data', 'y': 'Número de Movimentações'}
+            )
+            
+            fig.update_layout(height=400)
+            
+            return fig
+        except Exception as e:
+            logger.log_action("error", f"Erro ao criar timeline de movimentações: {e}")
+            return None
     
     def create_movimentacoes_by_type(self, df_movimentacoes):
         """Criar gráfico de movimentações por tipo"""
         if df_movimentacoes.empty:
             return None
         
-        type_counts = df_movimentacoes['tipo_item'].value_counts()
+        if not PLOTLY_AVAILABLE:
+            return None
         
-        fig = px.bar(
-            x=type_counts.index,
-            y=type_counts.values,
-            title="Movimentações por Tipo de Item",
-            labels={'x': 'Tipo', 'y': 'Movimentações'},
-            color=type_counts.values,
-            color_continuous_scale='plasma'
-        )
-        
-        fig.update_layout(height=400, showlegend=False)
-        
-        return fig
+        try:
+            type_counts = df_movimentacoes['tipo_item'].value_counts()
+            
+            fig = px.bar(
+                x=type_counts.index,
+                y=type_counts.values,
+                title="Movimentações por Tipo de Item",
+                labels={'x': 'Tipo', 'y': 'Movimentações'},
+                color=type_counts.values,
+                color_continuous_scale='plasma'
+            )
+            
+            fig.update_layout(height=400, showlegend=False)
+            
+            return fig
+        except Exception as e:
+            logger.log_action("error", f"Erro ao criar gráfico de movimentações por tipo: {e}")
+            return None
     
     def generate_excel_report(self, df_inventario, df_movimentacoes=None):
         """Gerar relatório em Excel"""
@@ -516,7 +559,6 @@ def show():
                 columns_to_show.append('valor')
             
             # Usar função segura para exibir DataFrame
-            from utils.dataframe_utils import safe_dataframe
             safe_dataframe(
                 df_filtered[columns_to_show],
                 use_container_width=True,
@@ -592,7 +634,6 @@ def show():
                              'origem', 'destino', 'quantidade', 'responsavel', 'status']
             
             # Usar função segura para exibir DataFrame  
-            from utils.dataframe_utils import safe_dataframe
             safe_dataframe(
                 df_movimentacoes[columns_to_show],
                 use_container_width=True,
@@ -647,8 +688,24 @@ def show():
             if 'valor' in df_inventario.columns:
                 st.markdown("#### 💰 Análise Financeira")
                 
-                # Filtrar valores válidos
-                df_com_valor = df_inventario[df_inventario['valor'].notna() & (df_inventario['valor'] > 0)]
+                # Filtrar valores válidos (converter para numérico antes de comparar)
+                try:
+                    # Converter valores para numérico, colocando NaN onde não for possível
+                    df_inventario_copy = df_inventario.copy()
+                    df_inventario_copy['valor_numerico'] = pd.to_numeric(df_inventario_copy['valor'], errors='coerce')
+                    
+                    # Filtrar apenas valores válidos (não NaN e > 0)
+                    df_com_valor = df_inventario_copy[
+                        df_inventario_copy['valor_numerico'].notna() & 
+                        (df_inventario_copy['valor_numerico'] > 0)
+                    ]
+                    
+                    # Usar a coluna numérica para cálculos
+                    df_com_valor = df_com_valor.copy()
+                    df_com_valor['valor'] = df_com_valor['valor_numerico']
+                except Exception as e:
+                    st.error(f"Erro ao processar valores monetários: {e}")
+                    df_com_valor = pd.DataFrame()  # DataFrame vazio se houver erro
                 
                 if not df_com_valor.empty:
                     col1, col2, col3, col4 = st.columns(4)
@@ -670,16 +727,26 @@ def show():
                         st.metric("Itens Avaliados", itens_com_valor)
                     
                     # Histograma de valores
-                    fig_histogram = px.histogram(
-                        df_com_valor,
-                        x='valor',
-                        nbins=20,
-                        title="Distribuição dos Valores dos Itens",
-                        labels={'valor': 'Valor (R$)', 'count': 'Quantidade'}
-                    )
-                    
-                    fig_histogram.update_layout(height=400)
-                    st.plotly_chart(fig_histogram, use_container_width=True)
+                    if PLOTLY_AVAILABLE:
+                        try:
+                            fig_histogram = px.histogram(
+                                df_com_valor,
+                                x='valor',
+                                nbins=20,
+                                title="Distribuição dos Valores dos Itens",
+                                labels={'valor': 'Valor (R$)', 'count': 'Quantidade'}
+                            )
+                            
+                            fig_histogram.update_layout(height=400)
+                            st.plotly_chart(fig_histogram, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Erro ao criar histograma: {e}")
+                            # Fallback: mostrar dados em tabela
+                            st.subheader("Distribuição dos Valores dos Itens")
+                            safe_dataframe(df_com_valor[['codigo', 'descricao', 'valor']].head(20))
+                    else:
+                        st.subheader("Distribuição dos Valores dos Itens")
+                        safe_dataframe(df_com_valor[['codigo', 'descricao', 'valor']].head(20))
                 
                 else:
                     st.info("ℹ️ Poucos itens têm valores registrados para análise financeira")
@@ -698,15 +765,33 @@ def show():
                 movimentacoes_semana = df_movimentacoes.groupby('semana').size()
                 
                 if len(movimentacoes_semana) > 1:
-                    fig_tendencia = px.line(
-                        x=movimentacoes_semana.index.astype(str),
-                        y=movimentacoes_semana.values,
-                        title="Tendência de Movimentações por Semana",
-                        labels={'x': 'Semana', 'y': 'Número de Movimentações'}
-                    )
-                    
-                    fig_tendencia.update_layout(height=400)
-                    st.plotly_chart(fig_tendencia, use_container_width=True)
+                    if PLOTLY_AVAILABLE:
+                        try:
+                            fig_tendencia = px.line(
+                                x=movimentacoes_semana.index.astype(str),
+                                y=movimentacoes_semana.values,
+                                title="Tendência de Movimentações por Semana",
+                                labels={'x': 'Semana', 'y': 'Número de Movimentações'}
+                            )
+                            
+                            fig_tendencia.update_layout(height=400)
+                            st.plotly_chart(fig_tendencia, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Erro ao criar gráfico de tendência: {e}")
+                            # Fallback: mostrar dados em tabela
+                            st.subheader("Tendência de Movimentações por Semana")
+                            trend_df = pd.DataFrame({
+                                'Semana': movimentacoes_semana.index.astype(str),
+                                'Movimentações': movimentacoes_semana.values
+                            })
+                            safe_dataframe(trend_df)
+                    else:
+                        st.subheader("Tendência de Movimentações por Semana")
+                        trend_df = pd.DataFrame({
+                            'Semana': movimentacoes_semana.index.astype(str),
+                            'Movimentações': movimentacoes_semana.values
+                        })
+                        safe_dataframe(trend_df)
                 
                 # Top itens mais movimentados
                 st.markdown("#### 🏆 Top Itens Mais Movimentados")

@@ -9,4 +9,4 @@ echo    O navegador abrirá automaticamente
 echo    Pressione Ctrl+C para parar o servidor 
 echo. 
 call venv_web\Scripts\activate.bat 
-streamlit run app.py 
+streamlit run app.py --server.port 8548

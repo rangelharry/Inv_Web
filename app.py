@@ -192,6 +192,7 @@ def show_navigation():
             "🏗️ Obras/Departamentos": "obras",
             "📊 Movimentações": "movimentacoes",
             "📈 Relatórios": "relatorios",
+            "📋 Relatórios Backup": "relatorios_backup",
             "⚙️ Configurações": "configuracoes"
         }
         
@@ -281,6 +282,9 @@ def load_page(page_name: str):
         elif page_name == "relatorios":
             from pages import relatorios
             relatorios.show()
+        elif page_name == "relatorios_backup":
+            from pages import relatorios_backup
+            relatorios_backup.show()
         elif page_name == "configuracoes":
             from pages import configuracoes
             configuracoes.show()

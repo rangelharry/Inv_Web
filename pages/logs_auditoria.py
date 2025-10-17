@@ -15,10 +15,17 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from utils.auth import get_auth, check_authentication
-from utils.logging import system_logger
+from utils.logging import SystemLogger
 
 # Verificar autenticação quando acessado diretamente
 if not check_authentication():
+    st.stop()
+
+# Inicializar logger com tratamento de erro
+try:
+    system_logger = SystemLogger()
+except Exception as e:
+    st.error(f"❌ Erro ao inicializar sistema de logs: {str(e)}")
     st.stop()
 
 def show_logs_table(logs_data):
@@ -100,10 +107,14 @@ def show_logs_table(logs_data):
 
 def show_audit_summary():
     """Exibir resumo de auditoria"""
-    summary = system_logger.get_audit_summary(30)
-    
-    if not summary:
-        st.error("❌ Erro ao gerar resumo de auditoria")
+    try:
+        summary = system_logger.get_audit_summary(30)
+        
+        if not summary:
+            st.error("❌ Erro ao gerar resumo de auditoria")
+            return
+    except Exception as e:
+        st.error(f"❌ Erro ao gerar resumo de auditoria: {str(e)}")
         return
     
     st.markdown("### 📊 Resumo dos Últimos 30 Dias")
@@ -162,6 +173,17 @@ def show():
     st.markdown("## 📋 Logs de Auditoria")
     st.markdown("Sistema de logging e rastreabilidade de ações")
     
+    # Verificar se o sistema de logs está funcionando
+    try:
+        # Teste simples para verificar conectividade
+        test_logs = system_logger.get_logs(limit=1)
+        if test_logs is None:
+            st.error("❌ Sistema de logs não está respondendo corretamente")
+            return
+    except Exception as e:
+        st.error(f"❌ Erro na conectividade do sistema de logs: {str(e)}")
+        return
+    
     # Resumo de auditoria
     show_audit_summary()
     
@@ -205,13 +227,17 @@ def show():
     
     # Carregar e exibir logs
     with st.spinner("🔍 Carregando logs..."):
-        logs = system_logger.get_logs(
-            limit=limit,
-            user_id=user_id_filter,
-            action_filter=action_filter,
-            date_from=date_from.isoformat() if date_from else None,
-            date_to=date_to.isoformat() if date_to else None
-        )
+        try:
+            logs = system_logger.get_logs(
+                limit=limit,
+                user_id=user_id_filter,
+                action_filter=action_filter,
+                date_from=date_from.isoformat() if date_from else None,
+                date_to=date_to.isoformat() if date_to else None
+            )
+        except Exception as e:
+            st.error(f"❌ Erro ao carregar logs: {str(e)}")
+            return
     
     if logs:
         st.markdown(f"### 📋 Logs Encontrados ({len(logs)})")

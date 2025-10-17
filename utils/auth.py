@@ -405,7 +405,7 @@ class WebAuth:
                 usuario_nome = username
             
             self.db.execute_update("""
-                INSERT INTO auditoria (usuario, acao, detalhes, timestamp)
+                INSERT INTO logs_sistema (user_id, action, details, timestamp)
                 VALUES (?, ?, ?, ?)
             """, (
                 usuario_nome,
@@ -429,7 +429,7 @@ class WebAuth:
             usuario_nome = user_result[0]['usuario'] if user_result else str(user_id)
             
             self.db.execute_update("""
-                INSERT INTO auditoria (usuario, acao, detalhes, timestamp)
+                INSERT INTO logs_sistema (user_id, action, details, timestamp)
                 VALUES (?, ?, ?, ?)
             """, (
                 usuario_nome,

@@ -219,7 +219,7 @@ class BackupManager:
         try:
             db = get_database()
             db.execute_update("""
-                INSERT INTO auditoria (usuario, acao, detalhes, timestamp)
+                INSERT INTO logs_sistema (user_id, action, details, timestamp)
                 VALUES (?, ?, ?, ?)
             """, (
                 "sistema",
@@ -235,7 +235,7 @@ class BackupManager:
         try:
             db = get_database()
             db.execute_update("""
-                INSERT INTO auditoria (usuario, acao, detalhes, timestamp)
+                INSERT INTO logs_sistema (user_id, action, details, timestamp)
                 VALUES (?, ?, ?, ?)
             """, (
                 "sistema",

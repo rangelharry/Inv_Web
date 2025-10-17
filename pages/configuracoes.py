@@ -120,9 +120,9 @@ def show_activity_log():
         
         # Buscar registros de auditoria do usuário
         logs = db.execute_query("""
-            SELECT timestamp as data_hora, acao, detalhes 
-            FROM auditoria 
-            WHERE usuario = ? 
+            SELECT timestamp as data_hora, action as acao, details as detalhes 
+            FROM logs_sistema 
+            WHERE user_id = ? 
             ORDER BY timestamp DESC 
             LIMIT 20
         """, (user['usuario'],))

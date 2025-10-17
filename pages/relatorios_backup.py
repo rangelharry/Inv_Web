@@ -71,31 +71,85 @@ def show_chart_or_table(chart_result, data, title="Dados"):
             st.write(data)
 
 def get_inventario_data():
-    """Obter dados do inventário para relatórios"""
+    """Carregar dados do inventário de backup"""
     db = get_database()
     
-    # Equipamentos elétricos
-    equipamentos_eletricos = db.execute_query("""
-        SELECT 'Elétrico' as tipo, codigo, nome, categoria, status, localizacao
-        FROM equipamentos_eletricos
-    """)
-    
-    # Equipamentos manuais
-    equipamentos_manuais = db.execute_query("""
-        SELECT 'Manual' as tipo, codigo, nome, categoria, status, localizacao
-        FROM equipamentos_manuais
-    """)
-    
-    # Insumos
-    insumos = db.execute_query("""
-        SELECT 'Insumo' as tipo, codigo, nome, categoria, CAST(estoque_atual as TEXT) as status, localizacao
-        FROM insumos
-    """)
-    
-    # Combinar todos os dados
-    all_data = equipamentos_eletricos + equipamentos_manuais + insumos
-    
-    return pd.DataFrame(all_data) if all_data else pd.DataFrame()
+    try:
+        # DEBUG temporário
+        st.write("🔍 DEBUG: Executando consulta equipamentos elétricos...")
+        
+        # Equipamentos elétricos
+        equipamentos_eletricos = db.execute_query("""
+            SELECT 'Elétrico' as tipo, codigo, nome, categoria, COALESCE(status, 'indefinido') as status, COALESCE(localizacao, 'N/A') as localizacao
+            FROM equipamentos_eletricos
+        """)
+        st.write(f"🔍 DEBUG: Equipamentos elétricos encontrados: {len(equipamentos_eletricos or [])}")
+        print(f"DEBUG: Equipamentos elétricos: {len(equipamentos_eletricos or [])}")
+        
+        # Equipamentos manuais (usa 'descricao' ao invés de 'nome')
+        equipamentos_manuais = db.execute_query("""
+            SELECT 'Manual' as tipo, codigo, descricao as nome, tipo as categoria, COALESCE(status, 'indefinido') as status, COALESCE(localizacao, 'N/A') as localizacao
+            FROM equipamentos_manuais
+        """)
+        
+        # Equipamentos manuais (usa 'descricao' ao invés de 'nome')
+        st.write("🔍 DEBUG: Executando consulta equipamentos manuais...")
+        equipamentos_manuais = db.execute_query("""
+            SELECT 'Manual' as tipo, codigo, descricao as nome, tipo as categoria, COALESCE(status, 'indefinido') as status, COALESCE(localizacao, 'N/A') as localizacao
+            FROM equipamentos_manuais
+        """)
+        st.write(f"🔍 DEBUG: Equipamentos manuais encontrados: {len(equipamentos_manuais or [])}")
+        
+        # Insumos (usa 'descricao' ao invés de 'nome' e não tem 'estoque_atual')
+        st.write("🔍 DEBUG: Executando consulta insumos...")
+        insumos = db.execute_query("""
+            SELECT 'Insumo' as tipo, codigo, descricao as nome, categoria, CAST(COALESCE(quantidade, 0) as TEXT) as status, COALESCE(localizacao, 'N/A') as localizacao
+            FROM insumos
+        """)
+        st.write(f"🔍 DEBUG: Insumos encontrados: {len(insumos or [])}")
+        
+        # Combinar todos os dados
+        all_data = (equipamentos_eletricos or []) + (equipamentos_manuais or []) + (insumos or [])
+        st.write(f"🔍 DEBUG: Total de itens combinados: {len(all_data)}")
+        
+        if all_data:
+            df = pd.DataFrame(all_data)
+            # Garantir que todas as colunas sejam strings
+            for col in ['tipo', 'codigo', 'nome', 'categoria', 'status', 'localizacao']:
+                if col in df.columns:
+                    df[col] = df[col].astype(str).fillna('N/A')
+            st.write(f"🔍 DEBUG: DataFrame criado com {len(df)} linhas")
+            return df
+        else:
+            st.write("🔍 DEBUG: all_data está vazio, retornando DataFrame vazio")
+            return pd.DataFrame()        # Insumos (usa 'descricao' ao invés de 'nome' e não tem 'estoque_atual')
+        insumos = db.execute_query("""
+            SELECT 'Insumo' as tipo, codigo, descricao as nome, categoria, CAST(COALESCE(quantidade, 0) as TEXT) as status, COALESCE(localizacao, 'N/A') as localizacao
+            FROM insumos
+        """)
+        print(f"DEBUG: Insumos: {len(insumos or [])}")
+        
+        # Combinar todos os dados
+        all_data = (equipamentos_eletricos or []) + (equipamentos_manuais or []) + (insumos or [])
+        print(f"DEBUG: Total combinado: {len(all_data)}")
+        
+        if all_data:
+            df = pd.DataFrame(all_data)
+            # Garantir que todas as colunas sejam strings
+            for col in ['tipo', 'codigo', 'nome', 'categoria', 'status', 'localizacao']:
+                if col in df.columns:
+                    df[col] = df[col].astype(str).fillna('N/A')
+            print(f"DEBUG: DataFrame criado com {len(df)} linhas")
+            return df
+        else:
+            print("DEBUG: all_data está vazio!")
+            return pd.DataFrame()
+            
+    except Exception as e:
+        st.error(f"🔍 DEBUG: ERRO ao carregar dados do inventário: {str(e)}")
+        import traceback
+        st.error(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+        return pd.DataFrame()
 
 def create_excel_download(df, filename):
     """Criar link de download para Excel ou CSV"""
@@ -121,10 +175,17 @@ def show_inventario_completo():
     """Mostrar relatório de inventário completo"""
     st.subheader("📄 Relatório de Inventário Completo")
     
+    # DEBUG temporário
+    st.info("🔍 DEBUG: Iniciando carregamento de dados...")
+    
     with st.spinner("Carregando dados..."):
         df = get_inventario_data()
     
+    # DEBUG temporário
+    st.info(f"🔍 DEBUG: DataFrame carregado - Linhas: {len(df)}, Vazio: {df.empty}")
+    
     if df.empty:
+        st.error("❌ PROBLEMA: DataFrame está vazio!")
         st.warning("Nenhum dado encontrado para o relatório.")
         return
     
@@ -204,14 +265,18 @@ def show_inventario_completo():
     # Aplicar filtros
     filtered_df = df.copy()
     
-    if tipo_filter != "Todos":
-        filtered_df = filtered_df[filtered_df['tipo'] == tipo_filter]
-    
-    if categoria_filter != "Todas":
-        filtered_df = filtered_df[filtered_df['categoria'] == categoria_filter]
-    
-    if status_filter != "Todos":
-        filtered_df = filtered_df[filtered_df['status'] == status_filter]
+    try:
+        if tipo_filter != "Todos":
+            filtered_df = filtered_df[filtered_df['tipo'].astype(str) == str(tipo_filter)]
+        
+        if categoria_filter != "Todas":
+            filtered_df = filtered_df[filtered_df['categoria'].astype(str) == str(categoria_filter)]
+        
+        if status_filter != "Todos":
+            filtered_df = filtered_df[filtered_df['status'].astype(str) == str(status_filter)]
+    except Exception as e:
+        st.error(f"Erro ao aplicar filtros: {str(e)}")
+        filtered_df = df.copy()  # Usar dados originais se houver erro
     
     # Mostrar tabela
     st.dataframe(filtered_df, use_container_width=True)
@@ -254,6 +319,9 @@ def show_movimentacoes_relatorio():
     
     df_mov = pd.DataFrame(movimentacoes)
     df_mov['data'] = pd.to_datetime(df_mov['data'])
+    
+    # Garantir que status seja string e tratar valores None
+    df_mov['status'] = df_mov['status'].astype(str).fillna('indefinido')
     
     # Estatísticas
     col1, col2, col3, col4 = st.columns(4)
@@ -302,31 +370,43 @@ def show_movimentacoes_relatorio():
 def show():
     """Função principal da página Relatórios"""
     
+    # DEBUG temporário
+    st.write("🔍 DEBUG: Página relatorios_backup carregada!")
+    
     # Verificar autenticação
     auth = get_auth()
     if not auth.is_authenticated():
+        st.write("🔍 DEBUG: Usuário não autenticado!")
         auth.show_login_page()
         return
     
-    st.markdown(f"## 📈 Relatórios")
-    st.markdown("Relatórios gerenciais e operacionais")
+    st.write("🔍 DEBUG: Usuário autenticado!")
+    
+    st.markdown(f"## 📈 Relatórios Backup")
+    st.markdown("Relatórios gerenciais e operacionais de backup")
     
     # Verificar permissões (relatórios precisam de pelo menos papel de visualizador)
     if not auth.require_role('visualizador'):
+        st.write("🔍 DEBUG: Usuário sem permissão de visualizador!")
         return
     
+    st.write("🔍 DEBUG: Usuário tem permissões adequadas!")
+    
     # Seções de relatórios
+    st.write("🔍 DEBUG: Criando abas...")
     tab1, tab2, tab3, tab4 = st.tabs(["📊 Inventário", "📋 Movimentações", "💰 Financeiro", "🛠️ Sistema"])
     
     with tab1:
+        st.write("🔍 DEBUG: Dentro da aba Inventário!")
         st.markdown("### 📊 Relatórios de Inventário")
         
         col1, col2 = st.columns(2)
         
         with col1:
+            st.write("🔍 DEBUG: Criando botão Inventário Completo...")
             if st.button("📄 Inventário Completo", use_container_width=True, type="primary"):
+                st.write("🔍 DEBUG: Botão clicado!")
                 st.session_state.show_inventario_completo = True
-                st.rerun()
             
             if st.button("⚡ Equipamentos Elétricos", use_container_width=True):
                 st.info("📝 Relatório específico em desenvolvimento...")
@@ -345,12 +425,13 @@ def show():
                 st.info("📝 Relatório específico em desenvolvimento...")
         
         # Mostrar relatório se solicitado
+        st.write(f"🔍 DEBUG: Estado da sessão show_inventario_completo: {st.session_state.get('show_inventario_completo', False)}")
         if st.session_state.get('show_inventario_completo', False):
+            st.write("🔍 DEBUG: Mostrando relatório de inventário completo!")
             st.markdown("---")
             show_inventario_completo()
             if st.button("🔙 Voltar aos Relatórios"):
                 st.session_state.show_inventario_completo = False
-                st.rerun()
     
     with tab2:
         st.markdown("### 📋 Relatórios de Movimentação")
@@ -376,9 +457,8 @@ def show():
         if st.session_state.get('show_movimentacoes', False):
             st.markdown("---")
             show_movimentacoes_relatorio()
-            if st.button("🔙 Voltar aos Relatórios", key="back_mov"):
+            if st.button("🔙 Voltar aos Relatórios", key="voltar_mov"):
                 st.session_state.show_movimentacoes = False
-                st.rerun()
     
     with tab3:
         st.markdown("### 💰 Relatórios Financeiros")
@@ -422,8 +502,8 @@ def show():
                 if st.button("📋 Log de Auditoria", use_container_width=True):
                     db = get_database()
                     auditoria = db.execute_query("""
-                        SELECT usuario, acao, detalhes, timestamp
-                        FROM auditoria
+                        SELECT timestamp, user_id, action as acao, details as detalhes
+                        FROM logs_sistema
                         ORDER BY timestamp DESC
                         LIMIT 100
                     """)
@@ -440,21 +520,37 @@ def show():
                     for table, count in stats.items():
                         st.metric(f"Tabela {table}", count)
                 
-                if st.button("� Estatísticas de Backup", use_container_width=True):
-                    from utils.backup import get_backup_manager
-                    backup_mgr = get_backup_manager()
-                    stats = backup_mgr.get_backup_stats()
-                    
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        st.metric("Total Backups", stats['total_backups'])
-                        if stats['last_backup']:
-                            st.metric("Último Backup", stats['last_backup'].strftime('%d/%m/%Y'))
-                    
-                    with col_b:
-                        if stats['total_size'] > 0:
-                            size_mb = stats['total_size'] / (1024 * 1024)
-                            st.metric("Tamanho Total", f"{size_mb:.1f} MB")
+                if st.button("📊 Estatísticas de Backup", use_container_width=True):
+                    try:
+                        from utils.backup import get_backup_manager
+                        backup_mgr = get_backup_manager()
+                        stats = backup_mgr.get_backup_stats()
+                        
+                        if stats and isinstance(stats, dict):
+                            col_a, col_b = st.columns(2)
+                            with col_a:
+                                total_backups = stats.get('total_backups', 0)
+                                st.metric("Total Backups", str(total_backups))
+                                
+                                last_backup = stats.get('last_backup')
+                                if last_backup:
+                                    if hasattr(last_backup, 'strftime'):
+                                        st.metric("Último Backup", last_backup.strftime('%d/%m/%Y'))
+                                    else:
+                                        st.metric("Último Backup", str(last_backup))
+                                else:
+                                    st.metric("Último Backup", "Nenhum")
+                            with col_b:
+                                total_size = stats.get('total_size', 0)
+                                if total_size and isinstance(total_size, (int, float)) and total_size > 0:
+                                    size_mb = total_size / (1024 * 1024)
+                                    st.metric("Tamanho Total", f"{size_mb:.1f} MB")
+                                else:
+                                    st.metric("Tamanho Total", "N/A")
+                        else:
+                            st.error("Erro ao obter estatísticas de backup")
+                    except Exception as e:
+                        st.error(f"Erro ao carregar estatísticas de backup: {str(e)}")
         else:
             st.warning("⛔ Acesso restrito a administradores")
     
@@ -471,6 +567,4 @@ def show():
     - ✅ Controle de permissões
     """)
 
-if __name__ == "__main__":
-    from pages import relatorios
-    relatorios.show()
+# Este arquivo deve ser importado, não executado diretamente

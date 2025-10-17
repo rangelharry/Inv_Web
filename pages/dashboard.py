@@ -20,6 +20,10 @@ except ImportError:
     PLOTLY_AVAILABLE = False
     st.warning("⚠️ Plotly não disponível. Gráficos serão exibidos em formato alternativo.")
 
+# Inicializar cache da sessão para evitar erro de cache_data
+from utils.performance import get_cache_manager
+get_cache_manager()._initialize_session_cache()
+
 # Adicionar pasta raiz ao path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
