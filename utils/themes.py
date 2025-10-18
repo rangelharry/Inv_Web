@@ -15,16 +15,9 @@ class ThemeManager:
     
     def __init__(self):
         """Inicializar gerenciador de temas"""
-        self.themes = {
-            "default": self._get_default_theme(),
-            "dark": self._get_dark_theme(),
-            "professional": self._get_professional_theme(),
-            "modern": self._get_modern_theme(),
-            "high_contrast": self._get_high_contrast_theme()
-        }
-        
-        # Carregar tema salvo ou usar padrão
-        self.current_theme = self._load_user_theme()
+        # Somente tema padrão para manter simplicidade
+        self.themes = { "default": self._get_default_theme() }
+        self.current_theme = "default"
     
     def _get_default_theme(self) -> Dict[str, Any]:
         """Tema padrão da aplicação"""
@@ -120,10 +113,7 @@ class ThemeManager:
         """Carregar tema salvo do usuário"""
         try:
             # Verificar se há tema salvo na sessão
-            if 'selected_theme' in st.session_state:
-                return st.session_state.selected_theme
-            
-            # Tema padrão
+            # Sempre usar o default para simplificar
             return "default"
         except:
             return "default"
@@ -135,10 +125,8 @@ class ThemeManager:
         Args:
             theme_name: Nome do tema
         """
-        if theme_name in self.themes:
-            self.current_theme = theme_name
-            st.session_state.selected_theme = theme_name
-            st.rerun()
+        # Mantemos apenas o tema default; função é noop
+        return
     
     def get_current_theme(self) -> Dict[str, Any]:
         """Obter configurações do tema atual"""
@@ -146,58 +134,11 @@ class ThemeManager:
     
     def get_theme_names(self) -> list:
         """Obter lista de nomes de temas disponíveis"""
-        return [theme["name"] for theme in self.themes.values()]
+        return [self.themes['default']['name']]
     
     def show_theme_selector(self):
-        """Exibir seletor de temas"""
-        st.subheader("🎨 Personalização Visual")
-        
-        current_theme_data = self.get_current_theme()
-        theme_names = list(self.themes.keys())
-        current_index = theme_names.index(self.current_theme)
-        
-        # Seletor de tema
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            selected_theme = st.selectbox(
-                "Escolha um tema:",
-                theme_names,
-                index=current_index,
-                format_func=lambda x: self.themes[x]["name"],
-                key="theme_selector"
-            )
-        
-        with col2:
-            if st.button("🎨 Aplicar Tema", use_container_width=True):
-                self.set_theme(selected_theme)
-        
-        # Preview do tema
-        st.subheader("👁️ Visualização")
-        theme_data = self.themes[selected_theme]
-        
-        # Mostrar cores do tema
-        cols = st.columns(5)
-        colors = [
-            ("Primária", theme_data["primary_color"]),
-            ("Secundária", theme_data["secondary_color"]),
-            ("Sucesso", theme_data["success_color"]),
-            ("Aviso", theme_data["warning_color"]),
-            ("Erro", theme_data["error_color"])
-        ]
-        
-        for i, (name, color) in enumerate(colors):
-            with cols[i]:
-                st.markdown(f"""
-                <div style="
-                    background-color: {color};
-                    height: 50px;
-                    border-radius: 5px;
-                    margin-bottom: 5px;
-                    border: 1px solid #ddd;
-                "></div>
-                <small><center>{name}</center></small>
-                """, unsafe_allow_html=True)
+        # Seletor desativado: mantemos apenas o tema unico
+        st.info("A aplicação usa um único estilo visual consistente.")
     
     def apply_theme_css(self) -> str:
         """
@@ -206,59 +147,18 @@ class ThemeManager:
         Returns:
             str: CSS customizado
         """
-        theme = self.get_current_theme()
-        
-        return f"""
+        # Retornar um CSS simples consistente com global_css
+        return """
         <style>
-            /* Reset e base */
-            .stApp {{
-                font-family: {theme['font_family']};
-                background-color: {theme['background_color']};
-                color: {theme['text_color']};
-            }}
-            
-            /* Header personalizado */
-            .main-header {{
-                font-size: 2.8rem;
-                color: {theme['primary_color']};
-                text-align: center;
-                margin-bottom: 2rem;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-                font-weight: 700;
-                letter-spacing: -1px;
-            }}
-            
-            /* Sidebar customizada */
-            .stSidebar {{
-                background: {theme['sidebar_color']};
-            }}
-            
-            .stSidebar .stSelectbox > div > div {{
-                background-color: {theme['background_color']};
-                border: 2px solid {theme['primary_color']};
-                border-radius: {theme['border_radius']};
-            }}
-            
-            /* Botões personalizados */
-            .stButton > button {{
-                background: {theme['primary_color']};
-                color: white;
-                border: none;
-                border-radius: {theme['border_radius']};
-                padding: 0.6rem 1.2rem;
-                font-weight: 600;
-                font-size: 0.95rem;
-                transition: all 0.3s ease;
-                box-shadow: {theme['card_shadow']};
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }}
-            
-            .stButton > button:hover {{
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-                filter: brightness(1.1);
-            }}
+          :root{--accent:#2563eb;--accent-600:#1e40af;--border:#e6edf3;--radius:10px}
+          .stApp{font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial; background:#f7f9fb}
+          .main .block-container{padding:24px}
+          .stButton>button{background:var(--accent);color:#fff;border-radius:8px;padding:8px 14px}
+          .stButton>button:hover{background:var(--accent-600)}
+          .stSidebar{background:#fff;border-right:1px solid var(--border)}
+          .stCard, .stMetric, .stBlock{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+        </style>
+        """
             
             .stButton > button:active {{
                 transform: translateY(0);

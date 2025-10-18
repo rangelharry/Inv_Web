@@ -21,21 +21,31 @@ pause >nul
 
 echo.
 echo [1/8] Verificando Python...
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
+for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYVER_RAW=%%i
+if "%PYVER_RAW%"=="" (
     echo ❌ Python não encontrado! 
     echo.
-    echo Por favor, instale o Python 3.11+ primeiro:
+    echo Por favor, instale o Python 3.11.x primeiro:
     echo https://www.python.org/downloads/
-    echo.
-    echo Após a instalação, certifique-se de marcar a opção:
-    echo "Add Python to PATH" durante a instalação
-    echo.
     pause
     exit /b 1
 ) else (
-    echo ✅ Python encontrado
-    python --version
+    for /f "tokens=2 delims= " %%i in ("%PYVER_RAW%") do set PYVER=%%i
+    for /f "tokens=1,2 delims=." %%a in ("%PYVER%") do (
+        set PY_MAJOR=%%a
+        set PY_MINOR=%%b
+    )
+    echo ✅ Python encontrado: %PYVER%
+    if not "%PY_MAJOR%"=="3" (
+        echo Versao do Python (%PYVER%) nao suportada. Instale Python 3.11.x.
+        pause
+        exit /b 1
+    )
+    if not "%PY_MINOR%"=="11" (
+        echo Versao do Python (%PYVER%) nao suportada por este instalador. E obrigatorio o Python 3.11.x.
+        pause
+        exit /b 1
+    )
 )
 
 echo.
@@ -165,7 +175,7 @@ cursor.execute('''
 CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario TEXT UNIQUE NOT NULL,
-    senha TEXT NOT NULL,
+    senha_hash TEXT NOT NULL,
     nome TEXT,
     email TEXT,
     ativo INTEGER DEFAULT 1,

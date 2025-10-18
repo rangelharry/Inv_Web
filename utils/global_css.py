@@ -1,260 +1,118 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-CSS TOTALMENTE NOVO - ZERO TOLERÂNCIA AO TEMA ESCURO
-Sistema de CSS de força bruta absoluta
+Global CSS simples e agradável para Streamlit
+Uma única opção de estilo com paleta suave, tipografia moderna e elementos limpos.
 """
 
 import streamlit as st
 
+
 def apply_global_css():
-    """
-    CSS EXTREMAMENTE AGRESSIVO - QUEBRA QUALQUER TEMA ESCURO
-    """
-    # APLICAR CSS INLINE COM MÁXIMA PRIORIDADE
+    """Aplica um CSS leve e consistente à aplicação."""
     st.markdown("""
     <style>
-        /* ========================================
-           NUCLEAR CSS - DESTRUIR TEMA ESCURO
-           ======================================== */
-        
-        /* RESET ABSOLUTO - SEM EXCEÇÕES */
-        * {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            box-sizing: border-box !important;
-        }
-        
-        /* STREAMLIT FORÇADO BRANCO */
-        .stApp, .stApp *, [data-testid="stApp"], [data-testid="stApp"] * {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-        }
-        
-        /* CONTAINERS PRINCIPAIS - BRANCO ABSOLUTO */
-        html, body, #root, .stApp, .main, 
-        [data-testid="stAppViewContainer"],
-        [data-testid="stMainBlockContainer"],
-        [data-testid="stMain"],
-        .stMainBlockContainer, .stMain,
-        .main .block-container,
-        [data-testid="block-container"] {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            font-family: Arial, sans-serif !important;
-        }
-        
-        /* SIDEBAR - CINZA CLARO */
-        .stSidebar, .stSidebar *, .stSidebar div {
-            background: #f0f0f0 !important;
-            background-color: #f0f0f0 !important;
-            color: #000000 !important;
-        }
-        
-        /* TÍTULOS - PRETO FORTE */
-        h1, h2, h3, h4, h5, h6 {
-            color: #000000 !important;
-            background: #ffffff !important;
-            font-weight: bold !important;
-            margin: 1rem 0 !important;
-        }
-        
-        /* BOTÕES - AZUL FORTE */
-        .stButton > button, button {
-            background: #0066ff !important;
-            background-color: #0066ff !important;
-            color: #ffffff !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 0.75rem 1.5rem !important;
-            font-weight: bold !important;
-        }
-        
-        .stButton > button:hover, button:hover {
-            background: #0044cc !important;
-            background-color: #0044cc !important;
-        }
-        
-        /* INPUTS - BRANCO COM BORDA */
-        input, textarea, select,
-        .stTextInput input, 
-        .stTextArea textarea, 
-        .stSelectbox select,
-        .stNumberInput input {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            border: 2px solid #cccccc !important;
-            border-radius: 8px !important;
-            padding: 0.5rem !important;
-        }
-        
-        input:focus, textarea:focus, select:focus {
-            background: #ffffff !important;
-            color: #000000 !important;
-            border-color: #0066ff !important;
-        }
-        
-        /* ALERTAS - CORES VIVAS */
-        .stSuccess {
-            background: #00ff00 !important;
-            color: #000000 !important;
-            border: 2px solid #00cc00 !important;
-            padding: 1rem !important;
-            border-radius: 8px !important;
-        }
-        
-        .stError {
-            background: #ff6666 !important;
-            color: #000000 !important;
-            border: 2px solid #ff0000 !important;
-            padding: 1rem !important;
-            border-radius: 8px !important;
-        }
-        
-        .stWarning {
-            background: #ffff66 !important;
-            color: #000000 !important;
-            border: 2px solid #ffcc00 !important;
-            padding: 1rem !important;
-            border-radius: 8px !important;
-        }
-        
-        .stInfo {
-            background: #66ccff !important;
-            color: #000000 !important;
-            border: 2px solid #0099cc !important;
-            padding: 1rem !important;
-            border-radius: 8px !important;
-        }
-        
-        /* TEXTO - PRETO ABSOLUTO */
-        p, span, div, label, a, li, ul, ol {
-            color: #000000 !important;
-            background: transparent !important;
-        }
-        
-        /* TABELAS - BRANCO */
-        table, thead, tbody, tr, th, td {
-            background: #ffffff !important;
-            color: #000000 !important;
-            border: 1px solid #cccccc !important;
-        }
-        
-        /* MÉTRICAS - BRANCO */
-        .stMetric, [data-testid="metric-container"] {
-            background: #ffffff !important;
-            color: #000000 !important;
-            border: 2px solid #cccccc !important;
-            border-radius: 8px !important;
-            padding: 1rem !important;
-        }
-        
-        /* QUEBRAR QUALQUER TEMA ESCURO - ULTRA AGRESSIVO */
-        [style*="background-color: rgb(14, 17, 23)"],
-        [style*="background-color: #0e1117"],
-        [style*="background: rgb(14, 17, 23)"],
-        [style*="background: #0e1117"],
-        [style*="color: white"],
-        [style*="color: #ffffff"],
-        [data-theme="dark"],
-        [data-theme="dark"] *,
-        .stApp[data-theme="dark"],
-        .stApp[data-theme="dark"] * {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-        }
-        
-        /* TODAS AS CLASSES CSS DINÂMICAS */
-        [class*="css-"], [class*="st-"], [class*="css-"] * {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-        }
-        
-        /* FORÇAR EM ELEMENTOS ESPECÍFICOS */
-        section, article, div, main, aside, header, footer,
-        .element-container, .stMarkdown, .stText, .stButton,
-        .stSelectbox, .stTextInput, .stTextArea, .stNumberInput {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-        }
-        
-        /* ÚLTIMA LINHA DE DEFESA - SEM ESCAPE */
-        html, body, #root {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-        }
-        
-        .stApp, .stApp > div, .stApp * {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            color: #000000 !important;
-        }
+      :root {
+        --bg: #f7f9fb;
+        --card: #ffffff;
+        --muted: #6b7280;
+        --accent: #2563eb; /* azul */
+        --accent-600: #1e40af;
+        --border: #e6edf3;
+        --radius: 10px;
+        --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      }
+
+      html, body, .stApp {
+        background: var(--bg) !important;
+        color: #0f172a !important;
+        font-family: var(--font-sans) !important;
+      }
+
+      /* Container principal */
+      .main .block-container {
+        background: transparent !important;
+        padding: 24px !important;
+      }
+
+      /* Cards e blocos */
+      .stCard, .stMetric, .stBlock, .stExpandable, .element-container {
+        background: var(--card) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06) !important;
+        padding: 14px !important;
+      }
+
+      /* Sidebar */
+      .stSidebar {
+        background: var(--card) !important;
+        border-right: 1px solid var(--border) !important;
+      }
+
+      /* Títulos */
+      h1, h2, h3 {
+        color: #0f172a !important;
+        margin: 0.25rem 0 0.6rem 0 !important;
+      }
+
+      /* Botões */
+      .stButton>button, button {
+        background: var(--accent) !important;
+        color: white !important;
+        border: none !important;
+        padding: 8px 14px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+      }
+      .stButton>button:hover, button:hover {
+        background: var(--accent-600) !important;
+      }
+
+      /* Inputs */
+      input, textarea, select {
+        border: 1px solid var(--border) !important;
+        border-radius: 8px !important;
+        padding: 8px !important;
+        background: white !important;
+      }
+
+      /* Tabelas */
+      table, thead, tbody, tr, th, td {
+        border: 1px solid var(--border) !important;
+        background: white !important;
+        color: #0f172a !important;
+      }
+      tbody tr:nth-child(even) td { background: #fbfdff !important; }
+
+      /* Texto secundário */
+      .muted, .stMarkdown em, .stText {
+        color: var(--muted) !important;
+      }
+
+      a { color: var(--accent) !important; }
+
+      /* Pequenos ajustes responsivos */
+      @media (max-width: 600px) {
+        .main .block-container { padding: 12px !important; }
+        .stButton>button { width: 100% !important; }
+      }
     </style>
     """, unsafe_allow_html=True)
 
+
 def get_success_style():
-    """Estilo de sucesso"""
-    return "background: #00ff00 !important; color: #000000 !important; border: 2px solid #00cc00 !important; padding: 1rem !important; border-radius: 8px !important;"
+    return "background: #d1fae5; color: #065f46; border: 1px solid #10b981; padding: 0.6rem; border-radius: 8px;"
+
 
 def get_warning_style():
-    """Estilo de aviso"""
-    return "background: #ffff66 !important; color: #000000 !important; border: 2px solid #ffcc00 !important; padding: 1rem !important; border-radius: 8px !important;"
+    return "background: #fff7ed; color: #92400e; border: 1px solid #f59e0b; padding: 0.6rem; border-radius: 8px;"
+
 
 def get_error_style():
-    """Estilo de erro"""
-    return "background: #ff6666 !important; color: #000000 !important; border: 2px solid #ff0000 !important; padding: 1rem !important; border-radius: 8px !important;"
+    return "background: #fee2e2; color: #7f1d1d; border: 1px solid #ef4444; padding: 0.6rem; border-radius: 8px;"
+
 
 def force_light_theme():
-    """
-    FUNÇÃO NUCLEAR - FORÇA TEMA CLARO VIA JAVASCRIPT
-    """
-    st.markdown("""
-    <script>
-        // FORÇAR TEMA CLARO VIA JAVASCRIPT
-        function forceWhiteTheme() {
-            // Remover qualquer atributo de tema escuro
-            document.documentElement.removeAttribute('data-theme');
-            document.body.removeAttribute('data-theme');
-            
-            // Forçar estilos no HTML diretamente
-            const style = document.createElement('style');
-            style.innerHTML = `
-                * { 
-                    background: #ffffff !important; 
-                    background-color: #ffffff !important; 
-                    color: #000000 !important; 
-                }
-                .stApp, .stApp * { 
-                    background: #ffffff !important; 
-                    color: #000000 !important; 
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Aplicar estilos em todos os elementos
-            const allElements = document.querySelectorAll('*');
-            allElements.forEach(el => {
-                el.style.setProperty('background-color', '#ffffff', 'important');
-                el.style.setProperty('color', '#000000', 'important');
-                el.style.setProperty('background', '#ffffff', 'important');
-            });
-        }
-        
-        // Executar imediatamente
-        forceWhiteTheme();
-        
-        // Executar quando a página carregar
-        document.addEventListener('DOMContentLoaded', forceWhiteTheme);
-        
-        // Executar em intervalos para pegar mudanças dinâmicas
-        setInterval(forceWhiteTheme, 1000);
-    </script>
-    """, unsafe_allow_html=True)
+  """Compat shim: reaplica o CSS leve. Mantido para compatibilidade com imports antigos."""
+  apply_global_css()
