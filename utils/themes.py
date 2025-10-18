@@ -145,20 +145,10 @@ class ThemeManager:
         Gerar CSS personalizado baseado no tema atual
         
         Returns:
-            str: CSS customizado
+            str: CSS customizado (vazio - usamos apenas global_css)
         """
-        # Retornar um CSS simples consistente com global_css
-        return """
-        <style>
-          :root{--accent:#2563eb;--accent-600:#1e40af;--border:#e6edf3;--radius:10px}
-          .stApp{font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial; background:#f7f9fb}
-          .main .block-container{padding:24px}
-          .stButton>button{background:var(--accent);color:#fff;border-radius:8px;padding:8px 14px}
-          .stButton>button:hover{background:var(--accent-600)}
-          .stSidebar{background:#fff;border-right:1px solid var(--border)}
-          .stCard, .stMetric, .stBlock{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 6px 18px rgba(15,23,42,0.06)}
-        </style>
-        """
+        # Não aplicar CSS adicional - o global_css.py já cuida de tudo
+        return ""
 
 # Instância global do gerenciador de temas
 _theme_manager = None
