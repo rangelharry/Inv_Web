@@ -13,8 +13,29 @@ echo.
 :: Verificar se está na pasta correta
 if not exist "app.py" (
     echo ❌ Execute este script na pasta Inv_Web
+    echo    Pasta atual: %cd%
+    echo    Arquivos encontrados:
+    dir /b *.py 2>nul
     pause
     exit /b 1
+)
+
+:: Verificar conexão com internet
+echo 🌐 Verificando conexão com internet...
+ping -n 1 8.8.8.8 >nul 2>&1
+if %errorLevel% neq 0 (
+    echo ⚠️  Sem conexão com internet detectada
+    echo    A instalação pode falhar se dependências não estiverem em cache
+    echo.
+    echo Deseja continuar? (S/N)
+    set /p continuar="Digite sua escolha: "
+    if /i not "%continuar%"=="S" (
+        echo Instalação cancelada pelo usuário
+        pause
+        exit /b 0
+    )
+) else (
+    echo ✅ Conexão com internet OK
 )
 
 :: Verificar Python
@@ -27,11 +48,31 @@ if %errorLevel% neq 0 (
     echo    https://python.org/downloads/
     echo    ⚠️  Marque "Add Python to PATH" durante instalação
     echo.
+    echo 🔧 ALTERNATIVAMENTE:
+    echo    - Use Microsoft Store (python)
+    echo    - Use Anaconda (recomendado para iniciantes)
+    echo.
     pause
     exit /b 1
 ) else (
-    python --version
-    echo ✅ Python encontrado
+    for /f "tokens=*" %%i in ('python --version') do set PYTHON_VERSION=%%i
+    echo ✅ !PYTHON_VERSION! encontrado
+)
+
+:: Verificar pip
+echo 🔍 Verificando pip...
+python -m pip --version >nul 2>&1
+if %errorLevel% neq 0 (
+    echo ❌ pip não encontrado!
+    echo 🔧 Tentando reparar pip...
+    python -m ensurepip --upgrade
+    if %errorLevel% neq 0 (
+        echo ❌ Erro ao reparar pip - reinstale o Python
+        pause
+        exit /b 1
+    )
+) else (
+    echo ✅ pip encontrado
 )
 
 :: Verificar banco de dados
@@ -80,26 +121,77 @@ echo 📦 Instalando dependências web...
 echo    Isso pode levar alguns minutos...
 echo.
 
-pip install streamlit
-if %errorLevel% neq 0 (
-    echo ❌ Erro ao instalar Streamlit
-    echo.
-    echo 🔧 Tentando instalação individual...
-    pip install --no-cache-dir streamlit
+:: Verificar se existe requirements_minimal.txt
+if exist "requirements_minimal.txt" (
+    echo 🔧 Instalando dependências essenciais...
+    pip install -r requirements_minimal.txt
+    if %errorLevel% neq 0 (
+        echo ❌ Erro na instalação via requirements_minimal.txt
+        echo 🔧 Tentando instalação individual...
+        goto :install_individual
+    ) else (
+        echo ✅ Dependências mínimas instaladas com sucesso!
+        goto :install_complete
+    )
+) else (
+    echo ⚠️  requirements_minimal.txt não encontrado
+    echo 🔧 Instalando dependências individualmente...
+    goto :install_individual
 )
 
-pip install pandas plotly
-pip install python-dateutil
+:install_individual
+pip install streamlit>=1.28.0
+if %errorLevel% neq 0 (
+    echo ❌ Erro ao instalar Streamlit
+    echo 🔧 Tentando sem cache...
+    pip install --no-cache-dir streamlit>=1.28.0
+)
 
+pip install pandas>=1.5.0 plotly>=5.15.0 python-dateutil>=2.8.0 Pillow>=9.0.0
+if %errorLevel% neq 0 (
+    echo ❌ Erro na instalação de dependências adicionais
+    echo 🔧 Instalando uma por vez...
+    pip install pandas>=1.5.0
+    pip install plotly>=5.15.0 
+    pip install python-dateutil>=2.8.0
+    pip install Pillow>=9.0.0
+)
+
+:install_complete
 echo.
 echo ✅ Dependências instaladas com sucesso!
 
+:: Perguntar sobre componentes opcionais
+echo.
+echo 🔧 Deseja instalar componentes opcionais? (S/N)
+echo    - streamlit-authenticator (autenticação avançada)
+echo    - streamlit-option-menu (menus melhorados)
+echo    - streamlit-aggrid (tabelas avançadas)
+set /p opcional="Digite sua escolha: "
+
+if /i "%opcional%"=="S" (
+    echo.
+    echo 📦 Instalando componentes opcionais...
+    pip install streamlit-authenticator>=0.2.3 streamlit-option-menu>=0.3.6 streamlit-aggrid>=0.3.4
+    if %errorLevel% neq 0 (
+        echo ⚠️  Alguns componentes opcionais falharam, mas o sistema funcionará normalmente
+    ) else (
+        echo ✅ Componentes opcionais instalados!
+    )
+)
+
 :: Testar instalação
 echo.
-echo 🧪 Testando instalação...
-python -c "import streamlit; print('✅ Streamlit OK')"
-python -c "import pandas; print('✅ Pandas OK')"
-python -c "import plotly; print('✅ Plotly OK')"
+echo 🧪 Testando instalação completa...
+if exist "testar_instalacao.py" (
+    python testar_instalacao.py
+) else (
+    echo 🧪 Teste rápido de dependências...
+    python -c "import streamlit; print('✅ Streamlit OK')" || echo "❌ Streamlit ERRO"
+    python -c "import pandas; print('✅ Pandas OK')" || echo "❌ Pandas ERRO"  
+    python -c "import plotly; print('✅ Plotly OK')" || echo "❌ Plotly ERRO"
+    python -c "import sqlite3; print('✅ SQLite OK')" || echo "❌ SQLite ERRO"
+)
 
 :: Criar scripts de execução
 echo.

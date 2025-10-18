@@ -6,6 +6,7 @@ Interface principal para o sistema de alertas automáticos
 """
 
 import streamlit as st
+from utils.global_css import apply_global_css, force_light_theme
 import sys
 import os
 
@@ -21,6 +22,10 @@ if not check_authentication():
 
 def show():
     """Função principal da página de Alertas"""
+    
+    # FORÃ‡AR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

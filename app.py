@@ -10,6 +10,56 @@ import os
 import sys
 from datetime import datetime
 
+# FORÇAR TEMA CLARO GLOBALMENTE
+st.set_page_config(
+    page_title="Sistema de Inventário",
+    page_icon="📦",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# CSS NUCLEAR - APLICADO DIRETAMENTE NO APP PRINCIPAL
+st.markdown("""
+<style>
+    /* FORÇA BRUTA TOTAL - SEM ESCAPE */
+    * {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    
+    .stApp, .stApp *, [data-testid="stApp"], [data-testid="stApp"] * {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    
+    html, body, #root {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    
+    .stSidebar, .stSidebar * {
+        background: #f0f0f0 !important;
+        background-color: #f0f0f0 !important;
+        color: #000000 !important;
+    }
+    
+    /* QUEBRAR QUALQUER TEMA ESCURO */
+    [data-theme="dark"],
+    [data-theme="dark"] *,
+    [style*="background-color: rgb(14, 17, 23)"],
+    [style*="background-color: #0e1117"],
+    [style*="background: rgb(14, 17, 23)"],
+    [style*="background: #0e1117"] {
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Adicionar pasta utils ao path
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 
@@ -17,8 +67,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 from database.connection import init_database, get_database
 from utils.auth import get_auth
 from utils.backup import get_backup_manager
-from utils.themes import get_theme_manager
 from utils.feedback import get_feedback_manager, NotificationType
+from utils.global_css import apply_global_css
 
 # Inicialização robusta do session_state
 def init_session_state():
@@ -87,9 +137,8 @@ st.set_page_config(
     }
 )
 
-# CSS personalizado - Aplicar tema atual
-theme_manager = get_theme_manager()
-st.markdown(theme_manager.apply_theme_css(), unsafe_allow_html=True)
+# CSS centralizado para todo o sistema
+apply_global_css()
 
 def show_header():
     """Exibir header da aplicação"""
@@ -192,7 +241,6 @@ def show_navigation():
             "🏗️ Obras/Departamentos": "obras",
             "📊 Movimentações": "movimentacoes",
             "📈 Relatórios": "relatorios",
-            "📋 Relatórios Backup": "relatorios_backup",
             "⚙️ Configurações": "configuracoes"
         }
         
@@ -282,9 +330,6 @@ def load_page(page_name: str):
         elif page_name == "relatorios":
             from pages import relatorios
             relatorios.show()
-        elif page_name == "relatorios_backup":
-            from pages import relatorios_backup
-            relatorios_backup.show()
         elif page_name == "configuracoes":
             from pages import configuracoes
             configuracoes.show()

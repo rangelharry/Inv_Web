@@ -6,6 +6,7 @@ Página de controle de movimentações
 """
 
 import streamlit as st
+from utils.global_css import apply_global_css, force_light_theme
 import sys
 import os
 import pandas as pd
@@ -396,6 +397,10 @@ def rejeitar_movimentacao(movimentacao_id, motivo=""):
 
 def show():
     """Função principal da página Movimentações"""
+    
+    # FORÃ‡AR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

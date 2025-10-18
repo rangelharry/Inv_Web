@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List
 import pandas as pd
 
 import streamlit as st
+from utils.global_css import apply_global_css, force_light_theme
 import pandas as pd
 from datetime import datetime
 import sys
@@ -545,6 +546,37 @@ def show_metrics_eletricos(df):
 
 def show():
     """Função principal da página Equipamentos Elétricos"""
+    
+    # CSS INLINE FORÇA BRUTA
+    st.markdown("""
+    <style>
+        * {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+        
+        .stApp, .stApp * {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+        
+        .stSidebar, .stSidebar * {
+            background: #f0f0f0 !important;
+            color: #000000 !important;
+        }
+        
+        [data-theme="dark"], [data-theme="dark"] * {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # FORÇAR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

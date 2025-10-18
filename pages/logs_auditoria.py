@@ -6,6 +6,7 @@ Página para visualização e análise de logs do sistema
 """
 
 import streamlit as st
+from utils.global_css import apply_global_css, force_light_theme
 import pandas as pd
 from datetime import datetime, timedelta
 import sys
@@ -157,6 +158,10 @@ def show_audit_summary():
 
 def show():
     """Função principal da página Logs de Auditoria"""
+    
+    # FORÃ‡AR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

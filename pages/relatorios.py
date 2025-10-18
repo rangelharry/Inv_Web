@@ -6,6 +6,7 @@ Página de relatórios detalhados com gráficos, filtros e exportação
 """
 
 import streamlit as st
+from utils.global_css import apply_global_css, force_light_theme
 import sys
 import os
 import pandas as pd
@@ -460,6 +461,10 @@ def show_export_options(reports_manager, df_inventario, df_movimentacoes=None):
 
 def show():
     """Função principal da página de Relatórios Avançados"""
+    
+    # FORÃ‡AR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

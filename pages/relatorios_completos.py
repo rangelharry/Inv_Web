@@ -6,6 +6,7 @@ Página de geração de relatórios completos
 """
 
 import streamlit as st
+from utils.global_css import apply_global_css, force_light_theme
 import sys
 import os
 import pandas as pd
@@ -28,21 +29,37 @@ def get_inventario_completo():
     try:
         # Equipamentos elétricos
         query_eletricos = """
-            SELECT 'Elétrico' as tipo, codigo, nome as descricao, categoria, status, localizacao
+            SELECT 'Elétrico' as tipo, 
+                   COALESCE(codigo, '') as codigo, 
+                   COALESCE(nome, '') as descricao, 
+                   COALESCE(categoria, '') as categoria, 
+                   COALESCE(status, 'indefinido') as status, 
+                   COALESCE(localizacao, 'N/A') as localizacao
             FROM equipamentos_eletricos
         """
         
-        # Equipamentos manuais
+        # Equipamentos manuais  
         query_manuais = """
-            SELECT 'Manual' as tipo, codigo, nome as descricao, tipo as categoria, status, localizacao
+            SELECT 'Manual' as tipo, 
+                   COALESCE(codigo, '') as codigo, 
+                   COALESCE(descricao, '') as descricao, 
+                   COALESCE(tipo, '') as categoria, 
+                   COALESCE(status, 'indefinido') as status, 
+                   COALESCE(localizacao, 'N/A') as localizacao
             FROM equipamentos_manuais
         """
         
         # Insumos
         query_insumos = """
-            SELECT 'Insumo' as tipo, codigo, nome as descricao, categoria, 
-                   CASE WHEN quantidade <= quantidade_minima THEN 'Estoque Baixo' ELSE 'OK' END as status,
-                   localizacao
+            SELECT 'Insumo' as tipo, 
+                   COALESCE(codigo, '') as codigo, 
+                   COALESCE(descricao, '') as descricao, 
+                   COALESCE(categoria, '') as categoria, 
+                   CASE 
+                       WHEN quantidade <= quantidade_minima THEN 'Estoque Baixo' 
+                       ELSE 'OK' 
+                   END as status,
+                   COALESCE(localizacao, 'N/A') as localizacao
             FROM insumos
         """
         
@@ -125,16 +142,18 @@ def get_valor_inventario():
     try:
         # Valor dos equipamentos manuais
         query_manuais = """
-            SELECT SUM(CAST(valor as REAL)) as valor_total, COUNT(*) as quantidade
+            SELECT 
+                COALESCE(SUM(CAST(COALESCE(valor, 0) as REAL)), 0) as valor_total, 
+                COUNT(*) as quantidade
             FROM equipamentos_manuais
-            WHERE valor IS NOT NULL AND valor != ''
         """
         
         # Valor dos insumos
         query_insumos = """
-            SELECT SUM(quantidade * preco_unitario) as valor_total, COUNT(*) as quantidade
+            SELECT 
+                COALESCE(SUM(COALESCE(quantidade, 0) * COALESCE(preco_unitario, 0)), 0) as valor_total, 
+                COUNT(*) as quantidade
             FROM insumos
-            WHERE preco_unitario IS NOT NULL
         """
         
         manuais = db.execute_query(query_manuais)
@@ -155,6 +174,10 @@ def get_valor_inventario():
 
 def show():
     """Função principal da página Relatórios"""
+    
+    # FORÃ‡AR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

@@ -6,6 +6,7 @@ Página de configurações do sistema
 """
 
 import streamlit as st
+from utils.global_css import apply_global_css, force_light_theme
 import sys
 import os
 
@@ -154,6 +155,10 @@ def show_activity_log():
 
 def show():
     """Função principal da página Configurações"""
+    
+    # FORÃ‡AR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

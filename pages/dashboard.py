@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 import sys
 import os
 
+# CSS global
+from utils.global_css import apply_global_css, force_light_theme, get_success_style, get_warning_style, get_error_style
+
 # Importação segura do Plotly
 try:
     import plotly.express as px  # type: ignore
@@ -252,13 +255,13 @@ def show_status_chart(metrics: Dict[str, Any]) -> None:
         
         # Cards de status
         st.markdown(f"""
-        <div style='background: #d4edda; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;'>
-            <strong>✅ Disponível:</strong> {metrics.get('equipamentos_disponiveis', 0)} equipamentos
+        <div style='{get_success_style()}'>
+            <strong>✅ Disponíveis:</strong> {metrics.get('equipamentos_disponiveis', 0)} equipamentos
         </div>
-        <div style='background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;'>
-            <strong>⚠️ Em Uso:</strong> {metrics.get('equipamentos_em_uso', 0)} equipamentos
+        <div style='{get_warning_style()}'>
+            <strong>🔄 Em Uso:</strong> {metrics.get('equipamentos_em_uso', 0)} equipamentos
         </div>
-        <div style='background: #f8d7da; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;'>
+        <div style='{get_error_style()}'>
             <strong>🔧 Manutenção:</strong> {metrics.get('equipamentos_manutencao', 0)} equipamentos
         </div>
         """, unsafe_allow_html=True)
@@ -405,6 +408,10 @@ def show_quick_actions() -> None:
 
 def show():
     """Função principal da página Dashboard com otimizações de performance"""
+    
+    # FORÃ‡AR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

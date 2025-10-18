@@ -6,6 +6,7 @@ Página de gestão de obras, departamentos e locais
 """
 
 import streamlit as st
+from utils.global_css import apply_global_css, force_light_theme
 import sys
 import os
 import pandas as pd
@@ -123,6 +124,10 @@ def excluir_obra(obra_id):
 
 def show():
     """Função principal da página Obras"""
+    
+    # FORÃ‡AR TEMA CLARO - MODO EXTREMO
+    apply_global_css()
+    force_light_theme()
     
     # Verificar autenticação
     auth = get_auth()

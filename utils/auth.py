@@ -450,9 +450,17 @@ class WebAuth:
         
         with col2:
             st.markdown("""
-            <div style='background: #f0f2f6; padding: 2rem; border-radius: 10px; text-align: center;'>
-                <h3>Acesso ao Sistema</h3>
-                <p>Digite suas credenciais para continuar</p>
+            <div style='
+                background-color: #f8f9fa !important; 
+                padding: 20px !important; 
+                border-radius: 8px !important; 
+                text-align: center !important;
+                border: 1px solid #dee2e6 !important;
+                margin-bottom: 20px !important;
+                color: #212529 !important;
+            '>
+                <h3 style='color: #0066cc !important; margin-bottom: 10px !important; font-weight: 600 !important;'>Acesso ao Sistema</h3>
+                <p style='color: #6c757d !important; margin: 0 !important; font-size: 14px !important;'>Digite suas credenciais para continuar</p>
             </div>
             """, unsafe_allow_html=True)
             
