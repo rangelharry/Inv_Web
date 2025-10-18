@@ -9,93 +9,133 @@ import streamlit as st
 
 
 def apply_global_css():
-    """Aplica um CSS leve e consistente à aplicação."""
+    """Aplica um CSS leve e consistente à aplicação com tema claro forçado."""
     st.markdown("""
     <style>
-      :root {
-        --bg: #f7f9fb;
-        --card: #ffffff;
-        --muted: #6b7280;
-        --accent: #2563eb; /* azul */
-        --accent-600: #1e40af;
-        --border: #e6edf3;
-        --radius: 10px;
-        --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      /* FORÇAR TEMA CLARO EM TUDO */
+      .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        background-color: #f8f9fa !important;
+        color: #212529 !important;
       }
 
-      html, body, .stApp {
-        background: var(--bg) !important;
-        color: #0f172a !important;
-        font-family: var(--font-sans) !important;
+      /* Sidebar clara */
+      [data-testid="stSidebar"], [data-testid="stSidebarNav"] {
+        background-color: #ffffff !important;
+        color: #212529 !important;
+      }
+
+      /* Textos sempre escuros */
+      body, p, span, div, label, .stMarkdown, .stText {
+        color: #212529 !important;
+      }
+
+      /* Títulos */
+      h1, h2, h3, h4, h5, h6 {
+        color: #212529 !important;
+      }
+
+      /* Inputs SEMPRE claros */
+      input, textarea, select,
+      .stTextInput input,
+      .stTextArea textarea,
+      .stSelectbox select,
+      [data-baseweb="input"],
+      [data-baseweb="textarea"],
+      [data-baseweb="select"] {
+        background-color: #ffffff !important;
+        color: #212529 !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 6px !important;
+      }
+
+      /* Labels dos inputs */
+      label, .stTextInput label, .stSelectbox label, .stTextArea label {
+        color: #495057 !important;
+        font-weight: 500 !important;
+      }
+
+      /* Botões azuis */
+      .stButton > button, button[kind="primary"] {
+        background-color: #0d6efd !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 500 !important;
+      }
+
+      .stButton > button:hover, button[kind="primary"]:hover {
+        background-color: #0b5ed7 !important;
+      }
+
+      /* Botões secundários */
+      button[kind="secondary"] {
+        background-color: #6c757d !important;
+        color: #ffffff !important;
+        border: none !important;
+      }
+
+      button[kind="secondary"]:hover {
+        background-color: #5c636a !important;
+      }
+
+      /* Tabs */
+      .stTabs [data-baseweb="tab-list"] {
+        background-color: #ffffff !important;
+      }
+
+      .stTabs [data-baseweb="tab"] {
+        color: #495057 !important;
+        background-color: transparent !important;
+      }
+
+      .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        color: #0d6efd !important;
+        background-color: #e7f1ff !important;
+      }
+
+      /* Dataframes e tabelas */
+      .stDataFrame, [data-testid="stDataFrame"],
+      table, thead, tbody, tr, th, td {
+        background-color: #ffffff !important;
+        color: #212529 !important;
+        border-color: #dee2e6 !important;
+      }
+
+      /* Métricas */
+      [data-testid="stMetric"], [data-testid="metric-container"] {
+        background-color: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        padding: 1rem !important;
+      }
+
+      [data-testid="stMetricLabel"] {
+        color: #6c757d !important;
+      }
+
+      [data-testid="stMetricValue"] {
+        color: #212529 !important;
+      }
+
+      /* Expanders */
+      .streamlit-expanderHeader {
+        background-color: #f8f9fa !important;
+        color: #212529 !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+      }
+
+      /* Alertas */
+      .stAlert, .stSuccess, .stError, .stWarning, .stInfo {
+        border-radius: 6px !important;
+        border: 1px solid !important;
       }
 
       /* Container principal */
       .main .block-container {
-        background: transparent !important;
-        padding: 24px !important;
-      }
-
-      /* Cards e blocos */
-      .stCard, .stMetric, .stBlock, .stExpandable, .element-container {
-        background: var(--card) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius) !important;
-        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06) !important;
-        padding: 14px !important;
-      }
-
-      /* Sidebar */
-      .stSidebar {
-        background: var(--card) !important;
-        border-right: 1px solid var(--border) !important;
-      }
-
-      /* Títulos */
-      h1, h2, h3 {
-        color: #0f172a !important;
-        margin: 0.25rem 0 0.6rem 0 !important;
-      }
-
-      /* Botões */
-      .stButton>button, button {
-        background: var(--accent) !important;
-        color: white !important;
-        border: none !important;
-        padding: 8px 14px !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-      }
-      .stButton>button:hover, button:hover {
-        background: var(--accent-600) !important;
-      }
-
-      /* Inputs */
-      input, textarea, select {
-        border: 1px solid var(--border) !important;
-        border-radius: 8px !important;
-        padding: 8px !important;
-        background: white !important;
-      }
-
-      /* Tabelas */
-      table, thead, tbody, tr, th, td {
-        border: 1px solid var(--border) !important;
-        background: white !important;
-        color: #0f172a !important;
-      }
-      tbody tr:nth-child(even) td { background: #fbfdff !important; }
-
-      /* Texto secundário */
-      .muted, .stMarkdown em, .stText {
-        color: var(--muted) !important;
-      }
-
-      a { color: var(--accent) !important; }
-
-      /* Pequenos ajustes responsivos */
-      @media (max-width: 600px) {
-        .main .block-container { padding: 12px !important; }
-        .stButton>button { width: 100% !important; }
+        padding: 2rem 1rem !important;
+        background-color: transparent !important;
       }
     </style>
     """, unsafe_allow_html=True)
