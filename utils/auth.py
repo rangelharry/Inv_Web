@@ -441,84 +441,139 @@ class WebAuth:
             st.error(f"Erro ao registrar logout: {e}")
     
     def show_login_page(self):
-        """Exibir página de login"""
-        st.title("🔐 Sistema de Inventário Web")
-        st.markdown("---")
+        """Página de login - REDESENHADA DO ZERO"""
         
-        # Container centralizado para login
-        _, col2, _ = st.columns([1, 2, 1])
+        # CSS minimalista para login
+        st.markdown("""
+        <style>
+            /* Esconder elementos desnecessários */
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            
+            /* Título principal */
+            .main-title {
+                text-align: center;
+                font-size: 32px;
+                font-weight: 700;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin: 40px 0 10px 0;
+                letter-spacing: -0.5px;
+            }
+            
+            .sub-title {
+                text-align: center;
+                font-size: 16px;
+                color: #586069;
+                margin-bottom: 40px;
+                font-weight: 400;
+            }
+            
+            /* Card de login */
+            .login-box {
+                background: white;
+                border: 1px solid #e1e4e8;
+                border-radius: 12px;
+                padding: 40px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                transition: box-shadow 0.3s ease;
+            }
+            
+            .login-box:hover {
+                box-shadow: 0 6px 30px rgba(0,0,0,0.12);
+            }
+            
+            /* Labels dos campos */
+            .field-label {
+                font-weight: 600;
+                color: #24292e;
+                font-size: 14px;
+                margin-bottom: 8px;
+                display: block;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Título
+        st.markdown('<div class="main-title">🏗️ Sistema de Inventário</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sub-title">Gestão de Equipamentos e Materiais</div>', unsafe_allow_html=True)
+        
+        # Layout centralizado
+        col1, col2, col3 = st.columns([1, 1.5, 1])
         
         with col2:
-            st.markdown("""
-            <div style='
-                background-color: #f8f9fa !important; 
-                padding: 20px !important; 
-                border-radius: 8px !important; 
-                text-align: center !important;
-                border: 1px solid #dee2e6 !important;
-                margin-bottom: 20px !important;
-                color: #212529 !important;
-            '>
-                <h3 style='color: #0066cc !important; margin-bottom: 10px !important; font-weight: 600 !important;'>Acesso ao Sistema</h3>
-                <p style='color: #6c757d !important; margin: 0 !important; font-size: 14px !important;'>Digite suas credenciais para continuar</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div class="login-box">', unsafe_allow_html=True)
             
-            st.markdown("<br>", unsafe_allow_html=True)
+            # Título do card
+            st.markdown("### Acesso ao Sistema")
+            st.markdown("Entre com suas credenciais")
+            st.markdown("---")
             
-            # Formulário de login
+            # Formulário
             with st.form("login_form", clear_on_submit=False):
+                
+                # Campo Usuário
+                st.markdown('<span class="field-label">Usuário</span>', unsafe_allow_html=True)
                 username = st.text_input(
-                    "👤 Usuário",
-                    placeholder="Digite seu nome de usuário"
+                    "usuario",
+                    placeholder="Digite seu usuário",
+                    label_visibility="collapsed"
                 )
                 
+                # Campo Senha  
+                st.markdown('<span class="field-label">Senha</span>', unsafe_allow_html=True)
                 password = st.text_input(
-                    "🔒 Senha",
+                    "senha",
                     type="password",
-                    placeholder="Digite sua senha"
+                    placeholder="Digite sua senha",
+                    label_visibility="collapsed"
                 )
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                col_login, col_demo = st.columns(2)
+                # Botões
+                col_a, col_b = st.columns(2)
                 
-                with col_login:
-                    login_button = st.form_submit_button(
+                with col_a:
+                    login_btn = st.form_submit_button(
                         "🚀 Entrar",
-                        use_container_width=True,
-                        type="primary"
+                        type="primary",
+                        use_container_width=True
                     )
                 
-                with col_demo:
-                    demo_button = st.form_submit_button(
-                        "🎯 Demo",
-                        use_container_width=True,
-                        help="Acesso de demonstração"
+                with col_b:
+                    demo_btn = st.form_submit_button(
+                        "🎯 Modo Demo",
+                        type="secondary",
+                        use_container_width=True
                     )
                 
                 # Processar login
-                if login_button:
+                if login_btn:
                     if not username or not password:
-                        st.error("❌ Por favor, preencha todos os campos!")
+                        st.error("Preencha todos os campos!")
                     else:
-                        with st.spinner("🔍 Verificando credenciais..."):
-                            if self.login_user(username, password):
-                                st.success("✅ Login realizado com sucesso!")
-                                st.balloons()
-                                st.rerun()
-                            else:
-                                st.error("❌ Usuário ou senha incorretos!")
-                
-                # Modo demonstração
-                if demo_button:
-                    with st.spinner("🎯 Ativando modo demonstração..."):
-                        if self.login_user("admin", "321nimda"):
-                            st.success("✅ Modo demonstração ativado!")
-                            st.info("👋 Bem-vindo ao modo demo!")
+                        if self.login_user(username, password):
+                            st.success("Login realizado!")
                             st.rerun()
                         else:
-                            st.error("❌ Erro ao ativar demonstração!")
+                            st.error("Usuário ou senha incorretos!")
+                
+                if demo_btn:
+                    if self.login_user("admin", "321nimda"):
+                        st.success("Modo demo ativado!")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao ativar demo!")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Info
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.info("💡 **Dica:** Use o modo demo para explorar o sistema sem fazer login")
         
         # Informações do sistema
         st.markdown("---")

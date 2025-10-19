@@ -18,48 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS NUCLEAR - APLICADO DIRETAMENTE NO APP PRINCIPAL
-st.markdown("""
-<style>
-    /* FORÇA BRUTA TOTAL - SEM ESCAPE */
-    * {
-        background: #ffffff !important;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-    
-    .stApp, .stApp *, [data-testid="stApp"], [data-testid="stApp"] * {
-        background: #ffffff !important;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-    
-    html, body, #root {
-        background: #ffffff !important;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-    
-    .stSidebar, .stSidebar * {
-        background: #f0f0f0 !important;
-        background-color: #f0f0f0 !important;
-        color: #000000 !important;
-    }
-    
-    /* QUEBRAR QUALQUER TEMA ESCURO */
-    [data-theme="dark"],
-    [data-theme="dark"] *,
-    [style*="background-color: rgb(14, 17, 23)"],
-    [style*="background-color: #0e1117"],
-    [style*="background: rgb(14, 17, 23)"],
-    [style*="background: #0e1117"] {
-        background: #ffffff !important;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # Adicionar pasta utils ao path
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 

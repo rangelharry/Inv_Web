@@ -141,13 +141,7 @@ class ThemeManager:
         st.info("A aplicação usa um único estilo visual consistente.")
     
     def apply_theme_css(self) -> str:
-        """
-        Gerar CSS personalizado baseado no tema atual
-        
-        Returns:
-            str: CSS customizado (vazio - usamos apenas global_css)
-        """
-        # Não aplicar CSS adicional - o global_css.py já cuida de tudo
+        """Não aplicar CSS - tudo vem do global_css.py"""
         return ""
 
 # Instância global do gerenciador de temas
