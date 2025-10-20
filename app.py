@@ -26,7 +26,166 @@ from database.connection import init_database, get_database
 from utils.auth import get_auth
 from utils.backup import get_backup_manager
 from utils.feedback import get_feedback_manager, NotificationType
-from utils.global_css import apply_global_css
+
+
+def apply_layout_fix():
+    """CSS para corrigir layout vertical problemático"""
+    st.markdown("""
+    <style>
+      /* Base Theme */
+      .stApp {
+        background-color: #f8f9fa !important;
+      }
+
+      [data-testid="stSidebar"] {
+        background-color: #ffffff !important;
+        border-right: 1px solid #dee2e6 !important;
+      }
+      
+      .main .block-container {
+        padding: 2rem 1rem !important;
+      }
+
+      /* CRITICAL: Fix Vertical Layout Issue */
+      body, p, div, span, label, h1, h2, h3, h4, h5, h6 {
+        color: #212529 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif !important;
+        line-height: 1.5 !important;
+        white-space: normal !important;
+        text-transform: none !important;
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+      }
+
+      /* Force All Content to Display Horizontally */
+      .stMarkdown, .stText, [data-testid="stMarkdownContainer"], 
+      .element-container, div[data-testid] {
+        white-space: normal !important;
+        word-break: normal !important;
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+        display: block !important;
+      }
+
+      /* Metrics Cards - Fix Layout */
+      [data-testid="stMetric"] {
+        background-color: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        padding: 1rem !important;
+        white-space: normal !important;
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+      }
+
+      [data-testid="stMetricLabel"] {
+        color: #6c757d !important;
+        font-weight: 500 !important;
+        white-space: normal !important;
+        writing-mode: horizontal-tb !important;
+      }
+
+      [data-testid="stMetricValue"] {
+        color: #212529 !important;
+        font-weight: 700 !important;
+        white-space: normal !important;
+        writing-mode: horizontal-tb !important;
+      }
+
+      /* Sidebar Menu - Capitalize but maintain layout */
+      [data-testid="stSidebar"] .stRadio label,
+      [data-testid="stSidebar"] .stRadio span {
+        text-transform: capitalize !important;
+        font-size: 14px !important;
+        color: #212529 !important;
+        white-space: normal !important;
+        line-height: 1.4 !important;
+        writing-mode: horizontal-tb !important;
+      }
+
+      /* Remove any CSS that might cause vertical text */
+      * {
+        writing-mode: horizontal-tb !important;
+        text-orientation: mixed !important;
+        direction: ltr !important;
+      }
+
+      /* Buttons */
+      .stButton > button {
+        background-color: #0d6efd !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 1.5rem !important;
+        font-weight: 600 !important;
+        text-transform: none !important;
+        white-space: normal !important;
+      }
+
+      /* Tables */
+      .stDataFrame, table {
+        background-color: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        white-space: normal !important;
+        writing-mode: horizontal-tb !important;
+      }
+
+      table th, table td {
+        color: #212529 !important;
+        white-space: normal !important;
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+      }
+
+      table th {
+        background-color: #f8f9fa !important;
+        font-weight: 600 !important;
+      }
+
+      /* Inputs */
+      input, textarea, select {
+        background-color: #ffffff !important;
+        color: #212529 !important;
+        border: 2px solid #e9ecef !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 1rem !important;
+        text-transform: none !important;
+        writing-mode: horizontal-tb !important;
+      }
+
+      /* Alerts */
+      .stSuccess {
+        background-color: #d1e7dd !important;
+        color: #0f5132 !important;
+        border-left: 4px solid #198754 !important;
+        white-space: normal !important;
+      }
+
+      .stError {
+        background-color: #f8d7da !important;
+        color: #842029 !important;
+        border-left: 4px solid #dc3545 !important;
+        white-space: normal !important;
+      }
+
+      .stWarning {
+        background-color: #fff3cd !important;
+        color: #664d03 !important;
+        border-left: 4px solid #ffc107 !important;
+        white-space: normal !important;
+      }
+
+      .stInfo {
+        background-color: #cfe2ff !important;
+        color: #084298 !important;
+        border-left: 4px solid #0d6efd !important;
+        white-space: normal !important;
+      }
+    </style>
+    """, unsafe_allow_html=True)
 
 # Inicialização robusta do session_state
 def init_session_state():
@@ -96,7 +255,15 @@ st.set_page_config(
 )
 
 # CSS centralizado para todo o sistema
-apply_global_css()
+apply_layout_fix()
+
+# CSS override adicional para forçar capitalização
+try:
+    with open('static/override.css', 'r', encoding='utf-8') as f:
+        override_css = f.read()
+    st.markdown(f"<style>{override_css}</style>", unsafe_allow_html=True)
+except:
+    pass  # Arquivo não encontrado, usar apenas CSS padrão
 
 def show_header():
     """Exibir header da aplicação"""
@@ -206,22 +373,23 @@ def show_navigation():
         if auth.has_permission('admin'):
             pages["📋 Logs de Auditoria"] = "logs_auditoria"
         
-        # Seletor de página com feedback
-        current_index = 0
-        if 'navigation_select' in st.session_state:
-            try:
-                current_page = st.session_state.navigation_select
-                if current_page in pages.keys():
-                    current_index = list(pages.keys()).index(current_page)
-            except:
-                pass
+        # Menu de navegação com radio buttons
+        current_page = st.session_state.get('navigation_select', '🏠 Dashboard')
         
-        selected_page = st.selectbox(
-            "Selecione uma seção:",
+        # Garantir que a página atual está na lista
+        if current_page not in pages.keys():
+            current_page = '🏠 Dashboard'
+        
+        selected_page = st.radio(
+            "**Selecione uma seção:**",
             list(pages.keys()),
-            index=current_index,
-            key="navigation_select"
+            index=list(pages.keys()).index(current_page),
+            key="navigation_radio"
         )
+        
+        # Atualizar session state se mudou
+        if selected_page != st.session_state.get('navigation_select'):
+            st.session_state.navigation_select = selected_page
         
         # Log da navegação
         if selected_page != st.session_state.get('last_page'):

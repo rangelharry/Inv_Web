@@ -1,0 +1,57 @@
+/* OVERRIDE COMPLETO DO STREAMLIT - FORÇA CAPITALIZAÇÃO */
+
+/* Reset global de text-transform */
+* {
+    text-transform: none !important;
+}
+
+/* EXCEÇÕES - CAMPOS DE INPUT NÃO DEVEM SER CAPITALIZADOS */
+input,
+input[type="text"],
+input[type="password"],
+input[type="email"],
+textarea,
+form input,
+[data-testid="stForm"] input,
+.stTextInput input,
+.stPasswordInput input,
+.stTextArea textarea {
+    text-transform: none !important;
+}
+
+/* Força capitalização específica APENAS para sidebar */
+[data-testid="stSidebar"] ul,
+[data-testid="stSidebar"] li,
+[data-testid="stSidebar"] span:not(input):not(textarea) {
+    text-transform: capitalize !important;
+}
+
+/* Seletores específicos para elementos do menu */
+#root > div:nth-child(1) > div.withScreencast > div > div > section > div.st-emotion-cache-155jwzh.e6f82ta2 > div.st-emotion-cache-79elbk.en0apyo0 > ul > li > div > a > span,
+.st-emotion-cache-155jwzh ul li div a span,
+.st-emotion-cache-79elbk ul li div a span,
+section div ul li div a span,
+[data-testid="stSidebar"] ul li div a span,
+[data-testid="stSidebar"] li span {
+    text-transform: capitalize !important;
+    font-weight: 500 !important;
+    color: #212529 !important;
+    font-size: 14px !important;
+}
+
+/* Radio buttons - se ainda estivermos usando */
+[data-testid="stSidebar"] .stRadio label,
+[data-testid="stSidebar"] .stRadio div,
+[data-testid="stSidebar"] .stRadio span {
+    text-transform: capitalize !important;
+}
+
+/* Selectbox - caso volte a ser usado */
+[data-testid="stSidebar"] .stSelectbox,
+[data-testid="stSidebar"] .stSelectbox *,
+[data-testid="stSidebar"] [data-baseweb="select"],
+[data-testid="stSidebar"] [data-baseweb="select"] *,
+[data-testid="stSidebar"] [role="combobox"],
+[data-testid="stSidebar"] [role="option"] {
+    text-transform: capitalize !important;
+}
