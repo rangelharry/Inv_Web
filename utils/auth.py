@@ -441,212 +441,291 @@ class WebAuth:
             st.error(f"Erro ao registrar logout: {e}")
     
     def show_login_page(self):
-        """Página de login - RESPONSIVA E OTIMIZADA"""
+        """Página de login - REDESIGN COMPLETO"""
         
-        # CSS limpo e profissional para login
+        # CSS COMPLETAMENTE NOVO - Baseado no exemplo fornecido
         st.markdown("""
         <style>
-            /* Esconder elementos desnecessários */
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            
-            /* Layout limpo */
-            .stApp {
-                background-color: #f8f9fa !important;
-                min-height: 100vh;
+            /* Ocultar elementos do Streamlit */
+            #MainMenu, footer, header, [data-testid="stToolbar"], [data-testid="stDecoration"] {
+                display: none !important;
             }
             
-            /* Container principal */
-            .main .block-container {
-                padding: 2rem !important;
-                max-width: 1200px !important;
+            /* Fundo gradiente suave */
+            [data-testid="stApp"] {
+                background: linear-gradient(135deg, #E8F0FE 0%, #C5DBFF 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            /* Remover TODOS os containers e paddings do Streamlit */
+            [data-testid="stVerticalBlock"],
+            [data-testid="block-container"],
+            .main .block-container,
+            section[data-testid="stSidebar"] {
+                background: transparent !important;
+                padding: 0 !important;
+                max-width: none !important;
+            }
+            
+            /* FORÇAR container principal a centralizar */
+            .main > div:first-child {
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+                min-height: 100vh !important;
+                padding: 20px !important;
+            }
+            
+            /* Card de login - TAMANHO FIXO E CENTRALIZADO */
+            .login-container {
+                max-width: 480px !important;
+                width: 480px !important;
                 margin: 0 auto !important;
+                background: #FFFFFF !important;
+                border-radius: 12px !important;
+                padding: 40px 50px !important;
+                box-shadow: 0 4px 20px rgba(79, 142, 247, 0.15) !important;
             }
             
             /* Título principal */
-            .main-title {
-                text-align: center;
-                font-size: 2.5rem !important;
-                font-weight: 700;
-                color: #2c3e50 !important;
-                margin: 2rem 0 1rem 0;
-                letter-spacing: -0.5px;
+            .login-container h1 {
+                font-size: 26px !important;
+                font-weight: 700 !important;
+                color: #5B7FE8 !important;
+                text-align: center !important;
+                margin: 0 0 8px 0 !important;
             }
             
-            .sub-title {
-                text-align: center;
-                font-size: 1.1rem !important;
-                color: #6c757d !important;
-                margin-bottom: 2rem;
-                font-weight: 400;
+            /* Subtítulo */
+            .login-container .subtitle {
+                font-size: 14px !important;
+                color: #6B7280 !important;
+                text-align: center !important;
+                margin: 0 0 32px 0 !important;
             }
             
-            /* Card de login limpo */
-            .login-box {
-                background: white !important;
-                border: 1px solid #dee2e6 !important;
-                border-radius: 12px !important;
-                padding: 2.5rem !important;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
-                margin: 0 auto !important;
-                max-width: 400px !important;
-                width: 100% !important;
-            }
-            
-            /* Labels limpos */
+            /* Labels dos campos */
+            [data-testid="stForm"] label,
             .field-label {
+                font-size: 14px !important;
                 font-weight: 600 !important;
-                color: #495057 !important;
-                font-size: 0.9rem !important;
-                margin-bottom: 0.5rem !important;
+                color: #374151 !important;
+                margin: 0 0 6px 0 !important;
                 display: block !important;
+                text-align: left !important;
             }
             
-            /* Inputs limpos */
-            .stTextInput input {
-                font-size: 1rem !important;
-                padding: 0.75rem !important;
-                border-radius: 6px !important;
-                border: 1px solid #ced4da !important;
-                background-color: #fff !important;
+            /* Ocultar labels padrão do Streamlit */
+            [data-testid="stForm"] [data-testid="stWidgetLabel"] {
+                display: none !important;
+            }
+            
+            /* INPUTS - Estilo moderno e compacto */
+            [data-testid="stForm"] input[type="text"],
+            [data-testid="stForm"] input[type="password"] {
                 width: 100% !important;
+                height: 44px !important;
+                padding: 10px 14px !important;
+                font-size: 14px !important;
+                border: 1px solid #D1D5DB !important;
+                border-radius: 6px !important;
+                background: #FFFFFF !important;
+                color: #374151 !important;
+                box-shadow: none !important;
+                transition: border-color 0.2s ease !important;
             }
             
-            .stTextInput input:focus {
-                border-color: #0d6efd !important;
-                box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+            [data-testid="stForm"] input:focus {
+                border-color: #5B7FE8 !important;
                 outline: none !important;
+                box-shadow: 0 0 0 3px rgba(91, 127, 232, 0.1) !important;
             }
             
-            /* Botões limpos */
-            .stButton > button {
-                font-size: 1rem !important;
-                padding: 0.75rem 1.5rem !important;
-                border-radius: 6px !important;
+            [data-testid="stForm"] input::placeholder {
+                color: #9CA3AF !important;
+            }
+            
+            /* Container de inputs - espaçamento */
+            [data-testid="stForm"] > div > div {
+                margin-bottom: 20px !important;
+            }
+            
+            /* BOTÕES - Lado a lado, estilo moderno */
+            [data-testid="stForm"] button {
+                width: 100% !important;
+                height: 44px !important;
+                padding: 0 24px !important;
+                font-size: 14px !important;
                 font-weight: 600 !important;
-                width: 100% !important;
+                border-radius: 6px !important;
                 border: none !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                line-height: 44px !important;
             }
             
-            button[type="submit"] {
-                background-color: #0d6efd !important;
-                color: white !important;
+            /* Botão primário (Entrar) */
+            [data-testid="stForm"] button[kind="primary"] {
+                background: #5B7FE8 !important;
+                color: #FFFFFF !important;
             }
             
-            button[type="submit"]:hover {
-                background-color: #0b5ed7 !important;
+            [data-testid="stForm"] button[kind="primary"]:hover {
+                background: #4A6AD6 !important;
+                box-shadow: 0 4px 12px rgba(91, 127, 232, 0.3) !important;
             }
             
-            /* Layout simples e limpo */
-            * {
-                writing-mode: horizontal-tb !important;
-                direction: ltr !important;
-                white-space: normal !important;
+            /* Botão secundário (Demo) */
+            [data-testid="stForm"] button[kind="secondary"] {
+                background: #F3F4F6 !important;
+                color: #374151 !important;
+                border: 1px solid #D1D5DB !important;
             }
             
+            [data-testid="stForm"] button[kind="secondary"]:hover {
+                background: #E5E7EB !important;
+            }
+            
+            /* Container de botões - 2 colunas */
             [data-testid="column"] {
-                width: 100% !important;
-                min-width: 0 !important;
+                padding: 0 4px !important;
+            }
+            
+            [data-testid="column"]:first-child {
+                padding-left: 0 !important;
+            }
+            
+            [data-testid="column"]:last-child {
+                padding-right: 0 !important;
+            }
+            
+            /* Info boxes abaixo do login */
+            .info-section {
+                max-width: 1000px;
+                margin: 40px auto 0;
+                padding: 0 20px;
+            }
+            
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+            
+            .info-card {
+                background: #FFFFFF;
+                padding: 24px;
+                border-radius: 10px;
+                text-align: center;
+                box-shadow: 0 2px 10px rgba(79, 142, 247, 0.1);
+            }
+            
+            .info-card .icon {
+                font-size: 32px;
+                margin-bottom: 12px;
+            }
+            
+            .info-card h3 {
+                font-size: 16px !important;
+                font-weight: 600 !important;
+                color: #374151 !important;
+                margin: 0 0 8px 0 !important;
+            }
+            
+            .info-card p {
+                font-size: 13px !important;
+                color: #6B7280 !important;
+                line-height: 1.5 !important;
+                margin: 0 !important;
+            }
+            
+            /* Responsivo */
+            @media (max-width: 768px) {
+                .login-container {
+                    padding: 30px 24px;
+                }
+                .info-grid {
+                    grid-template-columns: 1fr;
+                    gap: 16px;
+                }
             }
         </style>
         """, unsafe_allow_html=True)
         
-        # Layout centralizado simples
-        st.markdown('<div class="main-title">🏗️ Sistema de Inventário</div>', unsafe_allow_html=True)
-        st.markdown('<div class="sub-title">Gestão de Equipamentos e Materiais</div>', unsafe_allow_html=True)
+        # LAYOUT COM COLUNAS PARA CENTRALIZAR
+        col_left, col_center, col_right = st.columns([1, 2, 1])
         
-        # Container de login centralizado
-        col1, col2, col3 = st.columns([1, 2, 1])
-        
-        with col2:
-            st.markdown('<div class="login-box">', unsafe_allow_html=True)
+        with col_center:
+            # CONTAINER DE LOGIN
+            st.markdown('<div class="login-container">', unsafe_allow_html=True)
             
-            # Cabeçalho simples
-            st.markdown("### 🔐 Acesso ao Sistema")
-            st.markdown("---")
+            # Cabeçalho
+            st.markdown('<h1>Bem-vindo!</h1>', unsafe_allow_html=True)
+            st.markdown('<p class="subtitle">Faça o login para continuar.</p>', unsafe_allow_html=True)
             
-            # Formulário limpo
+            # FORMULÁRIO
             with st.form("login_form", clear_on_submit=False):
-                
                 # Campo Usuário
-                st.markdown('<span class="field-label">Usuário</span>', unsafe_allow_html=True)
-                username = st.text_input(
-                    "usuario",
-                    placeholder="Digite seu usuário",
-                    label_visibility="collapsed",
-                    key="login_username"
-                )
+                st.markdown('<p class="field-label">👤 Usuário</p>', unsafe_allow_html=True)
+                username = st.text_input("username", placeholder="Digite seu usuário", label_visibility="collapsed", key="user_input")
                 
-                # Campo Senha  
-                st.markdown('<span class="field-label">Senha</span>', unsafe_allow_html=True)
-                password = st.text_input(
-                    "senha",
-                    type="password",
-                    placeholder="Digite sua senha",
-                    label_visibility="collapsed",
-                    key="login_password"
-                )
+                # Campo Senha
+                st.markdown('<p class="field-label">🔒 Senha</p>', unsafe_allow_html=True)
+                password = st.text_input("password", type="password", placeholder="Digite sua senha", label_visibility="collapsed", key="pass_input")
                 
-                st.markdown("<br>", unsafe_allow_html=True)
+                # Espaçamento
+                st.markdown('<div style="margin: 24px 0 16px 0;"></div>', unsafe_allow_html=True)
                 
-                # Botões
-                col_a, col_b = st.columns(2)
-                
-                with col_a:
-                    login_btn = st.form_submit_button(
-                        "🚀 Entrar",
-                        type="primary",
-                        use_container_width=True
-                    )
-                
-                with col_b:
-                    demo_btn = st.form_submit_button(
-                        "🎯 Demo",
-                        use_container_width=True
-                    )
+                # Botões lado a lado
+                col1, col2 = st.columns(2)
+                with col1:
+                    login_btn = st.form_submit_button("🚀 Entrar", type="primary", use_container_width=True)
+                with col2:
+                    demo_btn = st.form_submit_button("🎯 Demo", type="secondary", use_container_width=True)
                 
                 # Processar login
                 if login_btn:
-                    if not username or not password:
-                        st.error("❌ Preencha todos os campos!")
-                    else:
+                    if username and password:
                         if self.login_user(username, password):
-                            st.success("✅ Login realizado!")
+                            st.success("✅ Login realizado com sucesso!")
                             st.rerun()
                         else:
-                            st.error("❌ Usuário ou senha incorretos!")
+                            st.error("❌ Usuário ou senha inválidos!")
+                    else:
+                        st.warning("⚠️ Por favor, preencha todos os campos!")
                 
                 if demo_btn:
                     if self.login_user("admin", "admin"):
-                        st.success("✅ Demo ativado!")
+                        st.success("✅ Modo Demo ativado!")
                         st.rerun()
-                    else:
-                        st.error("❌ Erro ao ativar demo!")
             
             st.markdown('</div>', unsafe_allow_html=True)
         
-        # Informações de acesso
-        st.markdown('<br>', unsafe_allow_html=True)
-        st.info("💡 **Credenciais padrão:** admin / admin")
-        
-        col_info1, col_info2 = st.columns(2)
-        
-        with col_info1:
-            st.info("""
-            **🌐 Sistema Web:**
-            - Acesso simultâneo
-            - Dados em tempo real
-            - Interface responsiva
-            """)
-        
-        with col_info2:
-            st.info("""
-            **🔒 Segurança:**
-            - Senhas criptografadas
-            - Sessões seguras
-            - Log de auditoria
-            """)
+        # INFO BOXES CENTRALIZADAS
+        st.markdown("""
+        <div class="info-section">
+            <div class="info-grid">
+                <div class="info-box">
+                    <div class="icon">🌐</div>
+                    <h3>Sistema Web</h3>
+                    <p>✓ Acesso simultâneo<br>✓ Tempo real<br>✓ Multiplataforma</p>
+                </div>
+                <div class="info-box">
+                    <div class="icon">🔒</div>
+                    <h3>Segurança</h3>
+                    <p>✓ Criptografia<br>✓ Sessões seguras<br>✓ Auditoria completa</p>
+                </div>
+                <div class="info-box">
+                    <div class="icon">💡</div>
+                    <h3>Acesso Padrão</h3>
+                    <p><strong>Usuário:</strong> admin<br><strong>Senha:</strong> admin</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Instância global para cache
 @st.cache_resource

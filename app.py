@@ -6,6 +6,30 @@ Versão Streamlit para acesso multiusuário online
 """
 
 import streamlit as st
+
+# MUST BE FIRST: Configuração da página
+st.set_page_config(
+    page_title="Sistema de Inventário Web",
+    page_icon="🏗️",
+    layout="wide",
+    initial_sidebar_state="collapsed",  # Sempre collapsed - controlaremos via código
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': """
+        # Sistema de Inventário Web v2.0
+        
+        Sistema completo para gestão de:
+        - Equipamentos Elétricos e Manuais
+        - Insumos e Materiais
+        - Obra/Departamento
+        - Movimentações e Relatórios
+        
+        **Desenvolvido com Streamlit**
+        """
+    }
+)
+
 import os
 import sys
 from datetime import datetime
@@ -215,39 +239,25 @@ def init_session_state():
 # Executar inicialização ANTES de qualquer import que use session_state
 init_session_state()
 
-# Configuração dinâmica da página
-# Verificar se usuário está logado para configurar sidebar
-try:
-    from utils.auth import get_auth
-    auth = get_auth()
-    sidebar_state = "expanded" if auth.is_authenticated() else "collapsed"
-except:
-    sidebar_state = "collapsed"
-
-st.set_page_config(
-    page_title="Sistema de Inventário Web",
-    page_icon="🏗️",
-    layout="wide",
-    initial_sidebar_state=sidebar_state,
-    menu_items={
-        'Get Help': None,
-        'Report a bug': None,
-        'About': """
-        # Sistema de Inventário Web v2.0
-        
-        Sistema completo para gestão de:
-        - Equipamentos Elétricos e Manuais
-        - Insumos e Materiais
-        - Obra/Departamento
-        - Movimentações e Relatórios
-        
-        **Desenvolvido com Streamlit**
-        """
-    }
-)
-
 # CSS centralizado para todo o sistema
 apply_layout_fix()
+
+def hide_sidebar():
+    """Esconder sidebar completamente para tela de login"""
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] {
+                display: none !important;
+            }
+            [data-testid="collapsedControl"] {
+                display: none !important;
+            }
+            .main .block-container {
+                padding: 1rem !important;
+                max-width: 100% !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
 # CSS override adicional para forçar capitalização
 try:
@@ -506,15 +516,15 @@ def main():
     
     # Verificar se usuário está autenticado
     if not auth.is_authenticated():
-        # Limpar sidebar quando não autenticado
-        st.sidebar.empty()
+        # ESCONDER SIDEBAR COMPLETAMENTE
+        hide_sidebar()
         auth.show_login_page()
         return
     
     # Verificar timeout da sessão
     if not auth.check_session_timeout():
-        # Limpar sidebar em caso de timeout
-        st.sidebar.empty()
+        # ESCONDER SIDEBAR em caso de timeout
+        hide_sidebar()
         st.warning("⏰ Sua sessão expirou. Faça login novamente.")
         auth.show_login_page()
         return
