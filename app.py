@@ -23,7 +23,7 @@ from utils.global_css import apply_global_css
 # Inicialização robusta do session_state
 def init_session_state():
     """Inicializar todas as variáveis de session_state necessárias"""
-    # Rate limiting
+    # Rate limiting - DEVE vir primeiro
     if 'rate_limit_data' not in st.session_state:
         st.session_state.rate_limit_data = {}
     
@@ -53,7 +53,7 @@ def init_session_state():
     if 'selected_theme' not in st.session_state:
         st.session_state.selected_theme = 'default'
 
-# Executar inicialização
+# Executar inicialização ANTES de qualquer import que use session_state
 init_session_state()
 
 # Configuração dinâmica da página
