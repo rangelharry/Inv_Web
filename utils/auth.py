@@ -441,9 +441,9 @@ class WebAuth:
             st.error(f"Erro ao registrar logout: {e}")
     
     def show_login_page(self):
-        """Página de login - REDESENHADA DO ZERO"""
+        """Página de login - RESPONSIVA E OTIMIZADA"""
         
-        # CSS minimalista para login
+        # CSS limpo e profissional para login
         st.markdown("""
         <style>
             /* Esconder elementos desnecessários */
@@ -451,68 +451,122 @@ class WebAuth:
             footer {visibility: hidden;}
             header {visibility: hidden;}
             
+            /* Layout limpo */
+            .stApp {
+                background-color: #f8f9fa !important;
+                min-height: 100vh;
+            }
+            
+            /* Container principal */
+            .main .block-container {
+                padding: 2rem !important;
+                max-width: 1200px !important;
+                margin: 0 auto !important;
+            }
+            
             /* Título principal */
             .main-title {
                 text-align: center;
-                font-size: 32px;
+                font-size: 2.5rem !important;
                 font-weight: 700;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                margin: 40px 0 10px 0;
+                color: #2c3e50 !important;
+                margin: 2rem 0 1rem 0;
                 letter-spacing: -0.5px;
             }
             
             .sub-title {
                 text-align: center;
-                font-size: 16px;
-                color: #586069;
-                margin-bottom: 40px;
+                font-size: 1.1rem !important;
+                color: #6c757d !important;
+                margin-bottom: 2rem;
                 font-weight: 400;
             }
             
-            /* Card de login */
+            /* Card de login limpo */
             .login-box {
-                background: white;
-                border: 1px solid #e1e4e8;
-                border-radius: 12px;
-                padding: 40px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-                transition: box-shadow 0.3s ease;
+                background: white !important;
+                border: 1px solid #dee2e6 !important;
+                border-radius: 12px !important;
+                padding: 2.5rem !important;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+                margin: 0 auto !important;
+                max-width: 400px !important;
+                width: 100% !important;
             }
             
-            .login-box:hover {
-                box-shadow: 0 6px 30px rgba(0,0,0,0.12);
-            }
-            
-            /* Labels dos campos */
+            /* Labels limpos */
             .field-label {
-                font-weight: 600;
-                color: #24292e;
-                font-size: 14px;
-                margin-bottom: 8px;
-                display: block;
+                font-weight: 600 !important;
+                color: #495057 !important;
+                font-size: 0.9rem !important;
+                margin-bottom: 0.5rem !important;
+                display: block !important;
+            }
+            
+            /* Inputs limpos */
+            .stTextInput input {
+                font-size: 1rem !important;
+                padding: 0.75rem !important;
+                border-radius: 6px !important;
+                border: 1px solid #ced4da !important;
+                background-color: #fff !important;
+                width: 100% !important;
+            }
+            
+            .stTextInput input:focus {
+                border-color: #0d6efd !important;
+                box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+                outline: none !important;
+            }
+            
+            /* Botões limpos */
+            .stButton > button {
+                font-size: 1rem !important;
+                padding: 0.75rem 1.5rem !important;
+                border-radius: 6px !important;
+                font-weight: 600 !important;
+                width: 100% !important;
+                border: none !important;
+            }
+            
+            button[type="submit"] {
+                background-color: #0d6efd !important;
+                color: white !important;
+            }
+            
+            button[type="submit"]:hover {
+                background-color: #0b5ed7 !important;
+            }
+            
+            /* Layout simples e limpo */
+            * {
+                writing-mode: horizontal-tb !important;
+                direction: ltr !important;
+                white-space: normal !important;
+            }
+            
+            [data-testid="column"] {
+                width: 100% !important;
+                min-width: 0 !important;
             }
         </style>
         """, unsafe_allow_html=True)
         
-        # Título
+        # Layout centralizado simples
         st.markdown('<div class="main-title">🏗️ Sistema de Inventário</div>', unsafe_allow_html=True)
         st.markdown('<div class="sub-title">Gestão de Equipamentos e Materiais</div>', unsafe_allow_html=True)
         
-        # Layout centralizado
-        col1, col2, col3 = st.columns([1, 1.5, 1])
+        # Container de login centralizado
+        col1, col2, col3 = st.columns([1, 2, 1])
         
         with col2:
             st.markdown('<div class="login-box">', unsafe_allow_html=True)
             
-            # Título do card
-            st.markdown("### Acesso ao Sistema")
-            st.markdown("Entre com suas credenciais")
+            # Cabeçalho simples
+            st.markdown("### 🔐 Acesso ao Sistema")
             st.markdown("---")
             
-            # Formulário
+            # Formulário limpo
             with st.form("login_form", clear_on_submit=False):
                 
                 # Campo Usuário
@@ -520,7 +574,8 @@ class WebAuth:
                 username = st.text_input(
                     "usuario",
                     placeholder="Digite seu usuário",
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key="login_username"
                 )
                 
                 # Campo Senha  
@@ -529,7 +584,8 @@ class WebAuth:
                     "senha",
                     type="password",
                     placeholder="Digite sua senha",
-                    label_visibility="collapsed"
+                    label_visibility="collapsed",
+                    key="login_password"
                 )
                 
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -546,37 +602,33 @@ class WebAuth:
                 
                 with col_b:
                     demo_btn = st.form_submit_button(
-                        "🎯 Modo Demo",
-                        type="secondary",
+                        "🎯 Demo",
                         use_container_width=True
                     )
                 
                 # Processar login
                 if login_btn:
                     if not username or not password:
-                        st.error("Preencha todos os campos!")
+                        st.error("❌ Preencha todos os campos!")
                     else:
                         if self.login_user(username, password):
-                            st.success("Login realizado!")
+                            st.success("✅ Login realizado!")
                             st.rerun()
                         else:
-                            st.error("Usuário ou senha incorretos!")
+                            st.error("❌ Usuário ou senha incorretos!")
                 
                 if demo_btn:
-                    if self.login_user("admin", "321nimda"):
-                        st.success("Modo demo ativado!")
+                    if self.login_user("admin", "admin"):
+                        st.success("✅ Demo ativado!")
                         st.rerun()
                     else:
-                        st.error("Erro ao ativar demo!")
+                        st.error("❌ Erro ao ativar demo!")
             
             st.markdown('</div>', unsafe_allow_html=True)
         
-        # Info
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.info("💡 **Dica:** Use o modo demo para explorar o sistema sem fazer login")
-        
-        # Informações do sistema
-        st.markdown("---")
+        # Informações de acesso
+        st.markdown('<br>', unsafe_allow_html=True)
+        st.info("💡 **Credenciais padrão:** admin / admin")
         
         col_info1, col_info2 = st.columns(2)
         
