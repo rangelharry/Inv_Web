@@ -10,14 +10,6 @@ import os
 import sys
 from datetime import datetime
 
-# FORÇAR TEMA CLARO GLOBALMENTE
-st.set_page_config(
-    page_title="Sistema de Inventário",
-    page_icon="📦",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # Adicionar pasta utils ao path
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 
@@ -198,7 +190,8 @@ def show_navigation():
             "📦 Insumos": "insumos",
             "🏗️ Obras/Departamentos": "obras",
             "📊 Movimentações": "movimentacoes",
-            "📈 Relatórios": "relatorios",
+            "� Responsáveis": "responsaveis",
+            "�📈 Relatórios": "relatorios",
             "⚙️ Configurações": "configuracoes"
         }
         
@@ -285,6 +278,9 @@ def load_page(page_name: str):
         elif page_name == "movimentacoes":
             from pages import movimentacoes
             movimentacoes.show()
+        elif page_name == "responsaveis":
+            from pages import responsaveis
+            responsaveis.show()
         elif page_name == "relatorios":
             from pages import relatorios
             relatorios.show()

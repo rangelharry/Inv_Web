@@ -497,6 +497,14 @@ def show():
     st.markdown("---")
     st.markdown("### ➕ Nova Movimentação")
     
+    # Buscar responsáveis ativos do banco
+    db = DatabaseConnection()
+    responsaveis_db = db.execute_query("SELECT id, nome, cargo, setor FROM responsaveis WHERE ativo = 1 ORDER BY nome")
+    
+    if not responsaveis_db:
+        st.warning("⚠️ Nenhum responsável cadastrado. Por favor, cadastre responsáveis antes de registrar movimentações.")
+        st.info("💡 Vá para Configurações → Responsáveis para cadastrar novos responsáveis.")
+    
     with st.form("nova_movimentacao"):
         col1, col2 = st.columns(2)
         
@@ -515,16 +523,37 @@ def show():
         
         with col2:
             destino = st.selectbox("Destino *", locais_simplificados, help="Local de destino do item")
-            responsavel = st.text_input("Responsável *", help="Nome do responsável pela movimentação")
+            
+            # Selectbox de responsáveis ao invés de text_input
+            if responsaveis_db:
+                # Criar opções formatadas para o selectbox
+                responsaveis_opcoes = [
+                    f"{r['nome']} - {r['cargo']} ({r['setor']})" if r.get('cargo') and r.get('setor') 
+                    else r['nome'] 
+                    for r in responsaveis_db
+                ]
+                
+                # Mapear opções para nomes reais
+                responsavel_selecionado_idx = st.selectbox(
+                    "Responsável *", 
+                    range(len(responsaveis_opcoes)),
+                    format_func=lambda x: responsaveis_opcoes[x],
+                    help="Selecione o responsável pela movimentação"
+                )
+                
+                responsavel_nome = responsaveis_db[responsavel_selecionado_idx]['nome']
+            else:
+                st.error("❌ Nenhum responsável disponível!")
+                responsavel_nome = None
         
         observacoes = st.text_area("Observações", help="Informações adicionais sobre a movimentação")
         
         submitted = st.form_submit_button("📦 Registrar Movimentação", type="primary")
         
         if submitted:
-            if codigo_item and origem and destino and responsavel:
+            if codigo_item and origem and destino and responsavel_nome:
                 # Registrar movimentação
-                success = registrar_movimentacao(codigo_item, origem, destino, quantidade, responsavel, observacoes)
+                success = registrar_movimentacao(codigo_item, origem, destino, quantidade, responsavel_nome, observacoes)
                 if success:
                     st.success("✅ Movimentação registrada com sucesso!")
                     st.rerun()
