@@ -35,7 +35,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\Anderson\Documents\Inv_Web\venv_web"
+VIRTUAL_ENV="E:\GITHUB\Inv_Web\venv_web"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

@@ -12,7 +12,7 @@ import sys
 import os
 
 # CSS global
-from utils.global_css import apply_global_css, force_light_theme, get_success_style, get_warning_style, get_error_style
+## Removido import de CSS externo
 
 # Importação segura do Plotly
 try:
@@ -410,8 +410,7 @@ def show():
     """Função principal da página Dashboard com otimizações de performance"""
     
     # FORÃ‡AR TEMA CLARO - MODO EXTREMO
-    apply_global_css()
-    force_light_theme()
+    # CSS global agora é aplicado pelo app.py
     
     # Verificar autenticação
     auth = get_auth()

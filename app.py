@@ -30,6 +30,35 @@ st.set_page_config(
     }
 )
 
+# CSS minimalista global
+st.markdown("""
+<style>
+    /* Reset básico para layout horizontal */
+    * {
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+        text-transform: none !important;
+    }
+    body, p, div, span, label, h1, h2, h3, h4, h5, h6 {
+        writing-mode: horizontal-tb !important;
+        direction: ltr !important;
+        white-space: normal !important;
+    }
+    .main .block-container {
+        padding: 1rem !important;
+        max-width: 1200px !important;
+    }
+    .stButton > button {
+        border-radius: 4px !important;
+        font-weight: 500 !important;
+    }
+    .dataframe {
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 import os
 import sys
 from datetime import datetime

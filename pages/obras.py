@@ -6,7 +6,7 @@ Página de gestão de obras, departamentos e locais
 """
 
 import streamlit as st
-from utils.global_css import apply_global_css, force_light_theme
+## Removido import de CSS externo
 import sys
 import os
 import pandas as pd
@@ -126,8 +126,7 @@ def show():
     """Função principal da página Obras"""
     
     # FORÃ‡AR TEMA CLARO - MODO EXTREMO
-    apply_global_css()
-    force_light_theme()
+    # CSS global agora é aplicado pelo app.py
     
     # Verificar autenticação
     auth = get_auth()
